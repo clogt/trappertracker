@@ -21,3 +21,8 @@ database_id = "d7c07df6-5947-4f95-94c2-da324b4763d3" # Cloudflare will generate 
 binding = "MEDIA_BUCKET"
 
 bucket_name = "trapper-tracker-photos"
+
+# Tell Wrangler (the build tool) to treat this package as external, 
+# which avoids the "Could not resolve" error during deployment.
+[build.upload]
+external = ["@cloudflare/kv-asset-handler"]
