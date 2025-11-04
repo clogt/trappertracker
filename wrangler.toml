@@ -2,29 +2,21 @@ name = "trappertracker"
 main = "worker/index.js"
 compatibility_date = "2024-03-01"
 
+# --- FIX: Tell Wrangler to ignore the missing package ---
+# This is the most common and direct fix for the build error.
+external_modules = ["@cloudflare/kv-asset-handler"]
+
 # --- Static Site Configuration ---
 [site]
 bucket = "dist"
 
-# --- D1 Database Configuration ---
-# Must use array syntax ([[...]])
+# --- D1 Database Configuration (Fixed Array Syntax) ---
 [[d1_databases]]
-# IMPORTANT: 'DB' is the binding name used in worker/index.js
 binding = "DB"
 database_name = "trappertrackerdb"
 database_id = "d7c07df6-5947-4f95-94c2-da324b4763d3"
 
-# --- R2 Bucket Configuration ---
-# Must use array syntax ([[...]])
+# --- R2 Bucket Configuration (Fixed Array Syntax) ---
 [[r2_buckets]]
-# IMPORTANT: 'MEDIA_BUCKET' is the binding name used in worker/index.js for pet photos
 binding = "MEDIA_BUCKET"
 bucket_name = "trapper-tracker-photos"
-
-# --- Fix for Missing NPM Install Error ---
-# This section tells Wrangler to ignore the missing package during the build.
-# This resolves the "Could not resolve @cloudflare/kv-asset-handler" error.
-[build]
-# command = "npm run build" # You can comment this out or delete it if you don't use a build step
-[build.upload]
-external = ["@cloudflare/kv-asset-handler"]
