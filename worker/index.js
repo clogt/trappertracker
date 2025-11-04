@@ -53,6 +53,54 @@ async function handleMapData(request, env) {
         headers: { 'Content-Type': 'application/json' },
     });
 }
+import { getAssetFromKV } from '@cloudflare/kv-asset-handler';
+
+export default {
+    async fetch(request, env, ctx) {
+        const url = new URL(request.url);
+
+        // 1. Check for API Routes first
+        if (url.pathname.startsWith('/api')) {
+            // Your API logic (e.g., D1 database, R2 bucket operations) goes here.
+            // ...
+            // return new Response("API Response", { status: 200 });
+            // ...
+        }
+
+        // 2. If it's not an API request, serve the static assets
+        try {
+            // This attempts to find and serve the file from the 'dist' folder
+            // that was deployed with your worker (as configured by [site] in wrangler.toml)
+            return await getAssetFromKV({ request, waitUntil: ctx.waitUntil });
+        } catch (e) {
+            // If the file is not found (404), serve index.html (SPA fallback)
+            let pathname = url.pathname;
+            if (!pathname.includes('.')) {
+                // If the path has no file extension, assume it's a deep link and serve index.html
+                pathname = '/index.html';
+            }
+            try {
+                // Fetch the fallback asset, assuming your front-end is a Single Page App (SPA)
+                let response = await getAssetFromKV({
+                    request,
+                    waitUntil: ctx.waitUntil,
+                }, {
+                    mapRequestToAsset: (req) => new Request(new URL(pathname, req.url)),
+                });
+                
+                // Set cache control for static assets
+                response.headers.set('Cache-Control', 'max-age=600'); 
+                return response;
+
+            } catch (e) {
+                // If even the fallback fails, return a proper 404
+                return new Response('Static File Not Found', {
+                    status: 404
+                });
+            }
+        }
+    },
+};
 
 // Main Worker Handler (Router)
 export default {
