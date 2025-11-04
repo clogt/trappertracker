@@ -8,13 +8,13 @@ bucket = "dist" # Assuming your static files are built into a 'dist' folder
 
 [vars]
 # You will need to get an API key for geocoding services (e.g., Mapbox, Google)
-GEOCODING_API_KEY = "<YOUR_GEOCODING_API_KEY>"
+GEOCODING_API_KEY = "pk.eyJ1IjoiYnppZHppayIsImEiOiJjbWhrb2EyNjUxb2lsMm1vZ2hxZ3JkMTg1In0.4G2KWdwoobyWTvAYIUybCQ"
 
 [d1_databases]
 # IMPORTANT: 'DB' is the binding name used in worker/index.js
 binding = "DB"
-database_name = "TrapperTrackerDB"
-database_id = "<YOUR_D1_DATABASE_ID>" # Cloudflare will generate this
+database_name = "trappertrackerdb"
+database_id = "d7c07df6-5947-4f95-94c2-da324b4763d3" # Cloudflare will generate this
 
 [r2_buckets]
 # IMPORTANT: 'MEDIA_BUCKET' is the binding name used in worker/index.js for pet photos
