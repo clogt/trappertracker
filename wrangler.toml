@@ -1,28 +1,30 @@
-# wrangler.toml
-name = "trapper-tracker-worker"
+name = "trappertracker"
 main = "worker/index.js"
-compatibility_date = "2025-01-01"
+compatibility_date = "2024-03-01"
 
+# --- Static Site Configuration ---
 [site]
-bucket = "dist" # Assuming your static files are built into a 'dist' folder
+bucket = "dist"
 
-[vars]
-# You will need to get an API key for geocoding services (e.g., Mapbox, Google)
-GEOCODING_API_KEY = "pk.eyJ1IjoiYnppZHppayIsImEiOiJjbWhrb2EyNjUxb2lsMm1vZ2hxZ3JkMTg1In0.4G2KWdwoobyWTvAYIUybCQ"
-
+# --- D1 Database Configuration ---
+# Must use array syntax ([[...]])
 [[d1_databases]]
 # IMPORTANT: 'DB' is the binding name used in worker/index.js
 binding = "DB"
 database_name = "trappertrackerdb"
-database_id = "d7c07df6-5947-4f95-94c2-da324b4763d3" # Cloudflare will generate this
+database_id = "d7c07df6-5947-4f95-94c2-da324b4763d3"
 
+# --- R2 Bucket Configuration ---
+# Must use array syntax ([[...]])
 [[r2_buckets]]
 # IMPORTANT: 'MEDIA_BUCKET' is the binding name used in worker/index.js for pet photos
 binding = "MEDIA_BUCKET"
-
 bucket_name = "trapper-tracker-photos"
 
-# Tell Wrangler (the build tool) to treat this package as external, 
-# which avoids the "Could not resolve" error during deployment.
+# --- Fix for Missing NPM Install Error ---
+# This section tells Wrangler to ignore the missing package during the build.
+# This resolves the "Could not resolve @cloudflare/kv-asset-handler" error.
+[build]
+# command = "npm run build" # You can comment this out or delete it if you don't use a build step
 [build.upload]
 external = ["@cloudflare/kv-asset-handler"]
