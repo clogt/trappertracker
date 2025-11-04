@@ -1,0 +1,22 @@
+# wrangler.toml
+name = "trapper-tracker-worker"
+main = "worker/index.js"
+compatibility_date = "2025-01-01"
+
+[site]
+bucket = "dist" # Assuming your static files are built into a 'dist' folder
+
+[vars]
+# You will need to get an API key for geocoding services (e.g., Mapbox, Google)
+GEOCODING_API_KEY = "<YOUR_GEOCODING_API_KEY>"
+
+[d1_databases]
+# IMPORTANT: 'DB' is the binding name used in worker/index.js
+binding = "DB"
+database_name = "TrapperTrackerDB"
+database_id = "<YOUR_D1_DATABASE_ID>" # Cloudflare will generate this
+
+[r2_buckets]
+# IMPORTANT: 'MEDIA_BUCKET' is the binding name used in worker/index.js for pet photos
+binding = "MEDIA_BUCKET"
+bucket_name = "trapper-tracker-photos"
