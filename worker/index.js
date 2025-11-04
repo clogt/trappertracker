@@ -1,4 +1,4 @@
-// Remove: import { getAssetFromKV } from '@cloudflare/kv-asset-handler';
+import { getStaticContent } from './static_content_handler';
 
 export default {
     /**
@@ -9,21 +9,25 @@ export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
 
-        // --- API Routing Logic ---
-        // The Worker will now only respond to API calls (or a /test route)
+        // --- 1. API Routing Logic ---
+        // All API calls should be handled here
         if (url.pathname.startsWith('/api/')) {
-            // NOTE: You will need to add your specific API handler code here.
+            // Your API logic to handle D1, R2, etc., goes here.
+            // (e.g., /api/pets, /api/upload)
             
-            // Example of a basic route handler:
+            // Temporary placeholder for testing:
             if (url.pathname === '/api/test') {
-                return new Response('API Worker is Running Successfully!', { status: 200 });
+                // Now you can test your D1 database here if you want!
+                // const { results } = await env.DB.prepare('SELECT * FROM my_table').all();
+                return new Response('API Worker is ready for full functionality!', { status: 200 });
             }
 
-            // If the API route doesn't match, return 404
+            // Return 404 for any unmatched /api route
             return new Response('API Endpoint Not Found', { status: 404 });
         }
 
-        // All other requests (like hitting the root URL '/') will get this response.
-        return new Response('The Worker is deployed, but no static content or API route was found for this path.', { status: 404 });
+        // --- 2. Static Asset (Website) Serving Logic ---
+        // All non-API requests are served from the 'dist' folder.
+        return getStaticContent(request, env, ctx);
     },
 };
