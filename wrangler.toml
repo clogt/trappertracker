@@ -1,0 +1,11 @@
+name = "trappertracker"
+main = "functions/api/report.js"
+compatibility_date = "2023-10-30"
+
+[vars]
+DATABASE_ID = "your-database-id"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "trappertracker"
+database_id = "your-database-id"

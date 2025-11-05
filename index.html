@@ -4,46 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrapperTracker - Danger Zone Map</title>
-    <link href="assets/css/style.css" rel="stylesheet">
-    </head>
-<body>
-    <header>
-        <h1>TrapperTracker: Community Awareness Map</h1>
-        <nav>
-            <a href="/">Map</a>
-            <a href="/submit.html">Submit a Report</a>
-            <a href="/about.html">About/Policy</a>
-            <a href="/login.html">Login/Register</a>
-        </nav>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <style>
+        #map { height: 600px; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <header class="bg-white shadow">
+        <div class="container mx-auto p-4 flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-gray-800">TrapperTracker</h1>
+            <nav>
+                <a href="/" class="text-gray-600 hover:text-gray-800 px-3 py-2">Map</a>
+                <a href="#report-form" class="text-gray-600 hover:text-gray-800 px-3 py-2">Submit a Report</a>
+                <a href="/about.html" class="text-gray-600 hover:text-gray-800 px-3 py-2">About/Policy</a>
+                <a href="/login.html" class="text-gray-600 hover:text-gray-800 px-3 py-2">Login/Register</a>
+            </nav>
+        </div>
     </header>
 
-    <main>
-        <div id="controls-container">
-            <input type="text" id="location-search" placeholder="Search City, Zip, or Address..." />
-            
-            <label for="recency-filter">Report Age:</label>
-            <select id="recency-filter">
-                <option value="7">Last 7 Days</option>
-                <option value="30">Last 30 Days</option>
-                <option value="all">All Time</option>
-            </select>
-            
-            <button id="advanced-filter-btn">🕒 Advanced Search</button>
-            
-            <label>
-                <input type="checkbox" id="toggle-lost-pets" checked> Show Lost Pets
-            </label>
-            
-            <a href="/submit.html" class="cta-button primary">Submit a Trapping Report</a>
+    <main class="container mx-auto p-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-2 bg-white shadow-lg rounded-lg p-4">
+                <div id="map"></div>
+            </div>
+            <div class="bg-white shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Controls</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="location-search" class="block text-sm font-medium text-gray-700">Search Location</label>
+                        <input type="text" id="location-search" placeholder="Search City, Zip, or Address..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="recency-filter" class="block text-sm font-medium text-gray-700">Report Age</label>
+                        <select id="recency-filter" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30">Last 30 Days</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button id="advanced-filter-btn" class="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300">🕒 Advanced Search</button>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="toggle-lost-pets" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="toggle-lost-pets" class="ml-2 block text-sm text-gray-900">Show Lost Pets</label>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="map">
-            </div>
+        <div id="report-form" class="bg-white shadow-lg rounded-lg p-6 mt-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Report an Incident</h2>
+            <form id="reportForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="reportType" class="block text-sm font-medium text-gray-700">Report Type</label>
+                    <select id="reportType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="dangerZone">Danger Zone (Trapper Activity)</option>
+                        <option value="lostPet">Lost/Missing Pet</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="location" class="block text-sm font-medium text-gray-700">Location (Click on map or enter address)</label>
+                    <input type="text" id="location" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="Address or Lat/Lng">
+                </div>
+                <div id="dangerZoneDetails" class="md:col-span-2">
+                    <label for="dangerDescription" class="block text-sm font-medium text-gray-700">Description of Danger</label>
+                    <textarea id="dangerDescription" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
+                </div>
+                <div id="petDetails" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                    <div>
+                        <label for="petName" class="block text-sm font-medium text-gray-700">Pet Name</label>
+                        <input type="text" id="petName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="contactInfo" class="block text-sm font-medium text-gray-700">Contact Info</label>
+                        <input type="text" id="contactInfo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Submit Report</button>
+                </div>
+            </form>
+.
+        </div>
 
-        <div id="advanced-filter-modal" class="modal">
+        <div id="advanced-filter-modal" class="modal hidden">
             </div>
     </main>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
     <script src="assets/js/map.js"></script>
     <script src="assets/js/ui.js"></script>
 </body>
