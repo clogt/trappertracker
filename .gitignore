@@ -1,0 +1,13 @@
+# Node dependencies
+node_modules/
+
+# Wrangler files
+.wrangler/
+
+# Miscellaneous
+New Text Document.txt
+assets/js/New Text Document.txt
+package-lock.json
+package.json
+plesk.gpg
+worker.js.txt

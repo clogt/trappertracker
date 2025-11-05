@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrapperTracker: Community Safety Map</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">TrapperTracker: Community Safety Map</h1>
+
+        <div id="map" class="bg-white shadow-lg rounded-lg mb-6"></div>
+
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Report an Incident</h2>
+            <form id="reportForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="reportType" class="block text-sm font-medium text-gray-700">Report Type</label>
+                    <select id="reportType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="lostPet">Lost/Missing Pet</option>
+                        <option value="dangerZone">Danger Zone (Trapper Activity)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="location" class="block text-sm font-medium text-gray-700">Location (Click on map or enter address)</label>
+                    <input type="text" id="location" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="Address or Lat/Lng">
+                </div>
+                <div id="petDetails" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="petName" class="block text-sm font-medium text-gray-700">Pet Name</label>
+                        <input type="text" id="petName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="contactInfo" class="block text-sm font-medium text-gray-700">Contact Info</label>
+                        <input type="text" id="contactInfo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                </div>
+                <div id="dangerZoneDetails" class="md:col-span-2 hidden">
+                    <label for="dangerDescription" class="block text-sm font-medium text-gray-700">Description of Danger</label>
+                    <textarea id="dangerDescription" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
+                </div>
+                <div class="md:col-span-2">
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTebOuxdEuRZwMLajMnSGWnOps2-ApZmg",
+            authDomain: "trappertracker-e22db.firebaseapp.com",
+            projectId: "trappertracker-e22db",
+            storageBucket: "trappertracker-e22db.firebasestorage.app",
+            messagingSenderId: "957830808847",
+            appId: "1:957830808847:web:708a0c843f361ad7896a7a"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let map;
+        let markers = []; // To keep track of all markers on the map
+
+        function initMap() {
+            const mapOptions = {
+                center: { lat: 39.8283, lng: -98.5795 }, // Centered on US
+                zoom: 4,
+            };
+            map = new google.maps.Map(document.getElementById("map"), mapOptions);
+
+            // Listen for map clicks to place markers
+            map.addListener("click", (event) => {
+                document.getElementById("location").value = `${event.latLng.lat()}, ${event.latLng.lng()}`;
+            });
+
+            // Initial load of data
+            loadReports();
+        }
+
+        function loadReports() {
+            // Clear existing markers
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+
+            // Load Lost Pet Reports
+            db.collection("artifacts").doc(firebaseConfig.appId).collection("public").doc("data").collection("lostPets")
+                .onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        const report = change.doc.data();
+                        if (change.type === "added" || change.type === "modified") {
+                            if (report.location && report.location.latitude && report.location.longitude) {
+                                const latLng = { lat: report.location.latitude, lng: report.location.longitude };
+                                const marker = new google.maps.Marker({
+                                    position: latLng,
+                                    map: map,
+                                    icon: {
+                                        path: google.maps.SymbolPath.CIRCLE,
+                                        fillColor: 'blue',
+                                        fillOpacity: 0.8,
+                                        strokeWeight: 0,
+                                        scale: 8
+                                    },
+                                    title: report.petName || "Lost Pet"
+                                });
+                                const infoWindow = new google.maps.InfoWindow({
+                                    content: `<h3>Lost Pet: ${report.petName}</h3><p>Contact: ${report.contactInfo}</p>`
+                                });
+                                marker.addListener("click", () => {
+                                    infoWindow.open(map, marker);
+                                });
+                                markers.push(marker);
+                            }
+                        }
+                        // Handle removed if necessary
+                    });
+                });
+
+            // Load Danger Zone Reports
+            db.collection("artifacts").doc(firebaseConfig.appId).collection("public").doc("data").collection("dangerReports")
+                .onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        const report = change.doc.data();
+                        if (change.type === "added" || change.type === "modified") {
+                            if (report.location && report.location.latitude && report.location.longitude) {
+                                // Obscure location with a 500-foot radius circle
+                                const cityCircle = new google.maps.Circle({
+                                    strokeColor: '#FF0000',
+                                    strokeOpacity: 0.8,
+                                    strokeWeight: 2,
+                                    fillColor: '#FF0000',
+                                    fillOpacity: 0.35,
+                                    map: map,
+                                    center: { lat: report.location.latitude, lng: report.location.longitude },
+                                    radius: 152.4 // 500 feet in meters
+                                });
+                                const infoWindow = new google.maps.InfoWindow({
+                                    content: `<h3>Danger Zone</h3><p>${report.description}</p>`
+                                });
+                                cityCircle.addListener("click", (event) => {
+                                    infoWindow.setPosition(event.latLng);
+                                    infoWindow.open(map);
+                                });
+                                markers.push(cityCircle); // Add circle to markers array for clearing
+                            }
+                        }
+                        // Handle removed if necessary
+                    });
+                });
+        }
+
+        document.getElementById("reportType").addEventListener("change", (event) => {
+            if (event.target.value === "lostPet") {
+                document.getElementById("petDetails").classList.remove("hidden");
+                document.getElementById("dangerZoneDetails").classList.add("hidden");
+            } else {
+                document.getElementById("petDetails").classList.add("hidden");
+                document.getElementById("dangerZoneDetails").classList.remove("hidden");
+            }
+        });
+
+        document.getElementById("reportForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const reportType = document.getElementById("reportType").value;
+            const locationInput = document.getElementById("location").value;
+            const [lat, lng] = locationInput.split(",").map(s => parseFloat(s.trim()));
+
+            if (isNaN(lat) || isNaN(lng)) {
+                alert("Please enter a valid Latitude, Longitude or click on the map.");
+                return;
+            }
+
+            const reportData = {
+                location: new firebase.firestore.GeoPoint(lat, lng),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                if (reportType === "lostPet") {
+                    reportData.petName = document.getElementById("petName").value;
+                    reportData.contactInfo = document.getElementById("contactInfo").value;
+                    await db.collection("artifacts").doc(firebaseConfig.appId).collection("public").doc("data").collection("lostPets").add(reportData);
+                    alert("Lost Pet Report Submitted!");
+                } else { // dangerZone
+                    // Ensure user is authenticated for danger reports
+                    let user = auth.currentUser;
+                    if (!user) {
+                        // Anonymous sign-in for initial access, then prompt for email for danger reports
+                        await auth.signInAnonymously();
+                        user = auth.currentUser; // Update user after anonymous sign-in
+                    }
+
+                    // For danger reports, we need email registration.
+                    // This is a simplified flow. In a real app, you'd redirect to a registration page
+                    // or show a modal for email/password setup if the user is anonymous.
+                    if (user.isAnonymous) {
+                        alert("Please register with an email to submit Danger Zone reports. (Simplified: This would typically redirect to a registration flow)");
+                        // For now, we'll just prevent submission if anonymous.
+                        return;
+                    }
+
+                    reportData.description = document.getElementById("dangerDescription").value;
+                    await db.collection("artifacts").doc(firebaseConfig.appId).collection("public").doc("data").collection("dangerReports").add(reportData);
+                    alert("Danger Zone Report Submitted!");
+                }
+                document.getElementById("reportForm").reset();
+                document.getElementById("petDetails").classList.remove("hidden");
+                document.getElementById("dangerZoneDetails").classList.add("hidden");
+            } catch (error) {
+                console.error("Error submitting report: ", error);
+                alert("Error submitting report: " + error.message);
+            }
+        });
+
+        // Load Google Maps script
+        function loadGoogleMapsScript() {
+            const script = document.createElement("script");
+            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAn4UOv63DELILhK_6tTT3N_PUoZ8vF7fg&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+
+        // Initialize app
+        document.addEventListener("DOMContentLoaded", loadGoogleMapsScript);
+    </script>
+</body>
+</html>
