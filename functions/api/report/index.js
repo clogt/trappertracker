@@ -1,16 +1,4 @@
-export default {
-    async fetch(request, env) {
-        const url = new URL(request.url);
-        if (url.pathname === '/api/mapdata') {
-            return await handleMapDataRequest(request, env);
-        } else if (url.pathname === '/api/report') {
-            return await handleReportRequest(request, env);
-        }
-        return new Response('Not found', { status: 404 });
-    },
-};
-
-async function handleMapDataRequest(request, env) {
+export async function handleMapDataRequest(request, env) {
     const { searchParams } = new URL(request.url);
     const recency = searchParams.get('recency') || 'all';
     const showPets = searchParams.get('show_pets') === 'true';
@@ -41,7 +29,7 @@ async function handleMapDataRequest(request, env) {
     }
 }
 
-async function handleReportRequest(request, env) {
+export async function handleReportRequest(request, env) {
     if (request.method !== 'POST') {
         return new Response('Method not allowed', { status: 405 });
     }

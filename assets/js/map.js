@@ -2,6 +2,8 @@
 
 const MAP_API_ENDPOINT = '/api/mapdata'; // Worker endpoint
 let map;
+let trapperMarkers = [];
+let petMarkers = [];
 
 function initMap() {
     // 1. Initialize Leaflet map in the #map container
@@ -51,12 +53,14 @@ function fetchMapData(timeStart=null, timeEnd=null) {
         .catch(err => console.error("Error fetching map data:", err));
 }
 
-let markers = [];
-
 function drawBlips(trapperData, petData) {
-    // Clear existing markers
-    markers.forEach(marker => marker.remove());
-    markers = [];
+    // Clear existing trapper markers
+    trapperMarkers.forEach(marker => marker.remove());
+    trapperMarkers = [];
+
+    // Clear existing pet markers
+    petMarkers.forEach(marker => marker.remove());
+    petMarkers = [];
 
     // 1. Draw Trapper Blips (Trapper Priority)
     trapperData.forEach(blip => {
@@ -83,11 +87,11 @@ function drawBlips(trapperData, petData) {
             <p style="color: ${markerColor};"><strong>Status:</strong> ${blipAgeDays <= 30 ? 'RECENTLY ACTIVE' : 'HISTORICAL'}</p>
         `;
         circle.bindPopup(popupContent);
-        markers.push(circle);
+        trapperMarkers.push(circle);
     });
 
     // 2. Draw Lost Pet Pins (Secondary Layer)
-    if (petData) {
+    if (petData && petData.length > 0) {
         petData.forEach(pet => {
             const marker = L.marker([pet.latitude, pet.longitude]).addTo(map);
             const popupContent = `
@@ -95,7 +99,7 @@ function drawBlips(trapperData, petData) {
                 <p><strong>Contact:</strong> ${pet.owner_contact_email}</p>
             `;
             marker.bindPopup(popupContent);
-            markers.push(marker);
+            petMarkers.push(marker);
         });
     }
 }

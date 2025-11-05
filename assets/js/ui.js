@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const petDetails = document.getElementById('petDetails');
     const dangerZoneDetails = document.getElementById('dangerZoneDetails');
     const reportForm = document.getElementById('reportForm');
+    const geocodeButton = document.getElementById('geocode-button');
+    const addressInput = document.getElementById('address');
+    const locationInput = document.getElementById('location');
 
     if (reportType) {
         reportType.addEventListener('change', (event) => {
@@ -18,13 +21,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (geocodeButton) {
+        geocodeButton.addEventListener('click', async () => {
+            const address = addressInput.value;
+            if (address) {
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        locationInput.value = `${data[0].lat}, ${data[0].lon}`;
+                    } else {
+                        alert('Address not found.');
+                    }
+                } catch (error) {
+                    console.error('Error geocoding address:', error);
+                    alert('Error geocoding address. Please try again.');
+                }
+            } else {
+                alert('Please enter an address.');
+            }
+        });
+    }
+
     if (reportForm) {
         reportForm.addEventListener('submit', async (event) => {
             event.preventDefault();
 
             const reportType = document.getElementById('reportType').value;
-            const locationInput = document.getElementById('location').value;
-            const [lat, lng] = locationInput.split(',').map(s => parseFloat(s.trim()));
+            const [lat, lng] = locationInput.value.split(',').map(s => parseFloat(s.trim()));
 
             if (isNaN(lat) || isNaN(lng)) {
                 alert('Please enter a valid Latitude, Longitude or click on the map.');

@@ -1,6 +1,6 @@
 name = "trappertracker"
-main = "functions/api/report.js"
 compatibility_date = "2023-10-30"
+account_id = "aaa44243e7d12c5daab2555cc08eb8aa"
 
 [vars]
 DATABASE_ID = "your-database-id"
@@ -8,4 +8,4 @@ DATABASE_ID = "your-database-id"
 [[d1_databases]]
 binding = "DB"
 database_name = "trappertracker"
-database_id = "your-database-id"
+database_id = "58d143ae-9c04-4136-b155-10f616846291"

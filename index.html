@@ -67,8 +67,13 @@
                     </select>
                 </div>
                 <div>
-                    <label for="location" class="block text-sm font-medium text-gray-700">Location (Click on map or enter address)</label>
-                    <input type="text" id="location" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="Address or Lat/Lng">
+                    <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
+                    <input type="text" id="address" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="Enter an address">
+                    <button type="button" id="geocode-button" class="mt-2 w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Geocode Address</button>
+                </div>
+                <div>
+                    <label for="location" class="block text-sm font-medium text-gray-700">Location (Click on map or enter Lat/Lng)</label>
+                    <input type="text" id="location" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="Lat/Lng">
                 </div>
                 <div id="dangerZoneDetails" class="md:col-span-2">
                     <label for="dangerDescription" class="block text-sm font-medium text-gray-700">Description of Danger</label>
