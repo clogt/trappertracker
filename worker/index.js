@@ -4,10 +4,9 @@ const DB_NAME = 'trappertrackerdb';
 
 // Define the API Handlers object. This object maps HTTP method + route pattern to an async function.
 const API_HANDLERS = {
-    // GET /api/animals - Fetch all animals
-    'GET /api/animals': async (request, env) => {
-        // NOTE: The database is accessed via 'env.DB' because the binding variable name is 'DB'.
-        const query = `SELECT * FROM animals ORDER BY name ASC`;
+    // GET /api/reports - Fetch all map reports
+    'GET /api/reports': async (request, env) => {
+        const query = `SELECT * FROM reports ORDER BY timestamp DESC`;
         try {
             const { results } = await env.DB.prepare(query).all();
             return new Response(JSON.stringify(results), {
@@ -15,28 +14,50 @@ const API_HANDLERS = {
                 status: 200
             });
         } catch (e) {
-            // This often catches the "no such table: animals" error if initialization failed.
-            return new Response(JSON.stringify({ error: 'Database query failed. Ensure the "animals" table exists.', details: e.message }), {
+            return new Response(JSON.stringify({ error: 'Database query failed. Ensure the "reports" table exists.', details: e.message }), {
                 headers: { 'Content-Type': 'application/json' },
                 status: 500
             });
         }
     },
 
-    // POST /api/animals - Create a new animal entry
-    'POST /api/animals': async (request, env) => {
+    // POST /api/reports - Create a new map report (Trapping Danger or Missing Pet)
+    'POST /api/reports': async (request, env) => {
         try {
             const data = await request.json();
 
-            // Simple validation
-            if (!data.name || !data.habitat || typeof data.population !== 'number' || data.population < 0) {
-                return new Response('Missing required fields (name, habitat, population) or invalid data type.', { status: 400 });
+            // Validate mandatory fields
+            if (!data.type || typeof data.lat !== 'number' || typeof data.lng !== 'number') {
+                return new Response('Missing mandatory fields: type, lat, or lng.', { status: 400 });
             }
 
-            const query = `INSERT INTO animals (name, habitat, population) VALUES (?, ?, ?)`;
-            await env.DB.prepare(query).bind(data.name, data.habitat, data.population).run();
+            // Bindings for the SQL query
+            const type = data.type; // 'trapper' or 'missing'
+            const lat = data.lat;
+            const lng = data.lng;
+            const description = data.description || null;
 
-            return new Response(JSON.stringify({ success: true, message: 'Animal added' }), {
+            let petName = null;
+            let contact = null;
+
+            if (type === 'missing') {
+                petName = data.petName || null;
+                contact = data.contact || null;
+                if (!petName || !contact) {
+                    return new Response('Missing mandatory fields for "missing" report: petName or contact.', { status: 400 });
+                }
+            }
+
+            const query = `
+                INSERT INTO reports (type, latitude, longitude, description, petName, contact) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            `;
+            
+            await env.DB.prepare(query)
+                .bind(type, lat, lng, description, petName, contact)
+                .run();
+
+            return new Response(JSON.stringify({ success: true, message: 'Report submitted' }), {
                 headers: { 'Content-Type': 'application/json' },
                 status: 201
             });
@@ -44,415 +65,435 @@ const API_HANDLERS = {
             return new Response(JSON.stringify({ error: e.message }), { status: 500 });
         }
     },
-
-    // PUT /api/animals/:id - Update an existing animal entry
-    'PUT /api/animals/:id': async (request, env, path) => {
-        const id = parseInt(path.split('/')[3]);
-        if (isNaN(id)) {
-            return new Response('Invalid animal ID', { status: 400 });
-        }
-
-        try {
-            const data = await request.json();
-            const updates = [];
-            const bindings = [];
-
-            if (data.name) { updates.push('name = ?'); bindings.push(data.name); }
-            if (data.habitat) { updates.push('habitat = ?'); bindings.push(data.habitat); }
-            if (typeof data.population === 'number' && data.population >= 0) { updates.push('population = ?'); bindings.push(data.population); }
-
-            if (updates.length === 0) {
-                return new Response('No fields provided for update', { status: 400 });
-            }
-
-            bindings.push(id);
-            const query = `UPDATE animals SET ${updates.join(', ')} WHERE id = ?`;
-
-            const result = await env.DB.prepare(query).bind(...bindings).run();
-
-            if (result.changes === 0) {
-                return new Response(JSON.stringify({ success: false, message: 'Animal not found or no changes made' }), { status: 404 });
-            }
-
-            return new Response(JSON.stringify({ success: true, message: `Animal ID ${id} updated` }), {
-                headers: { 'Content-Type': 'application/json' },
-                status: 200
-            });
-        } catch (e) {
-            return new Response(JSON.stringify({ error: e.message }), { status: 500 });
-        }
-    },
-
-    // DELETE /api/animals/:id - Delete an animal entry
-    'DELETE /api/animals/:id': async (request, env, path) => {
-        const id = parseInt(path.split('/')[3]);
-        if (isNaN(id)) {
-            return new Response('Invalid animal ID', { status: 400 });
-        }
-
-        try {
-            const query = `DELETE FROM animals WHERE id = ?`;
-            const result = await env.DB.prepare(query).bind(id).run();
-
-            if (result.changes === 0) {
-                return new Response(JSON.stringify({ success: false, message: 'Animal not found' }), { status: 404 });
-            }
-
-            return new Response(JSON.stringify({ success: true, message: `Animal ID ${id} deleted` }), {
-                headers: { 'Content-Type': 'application/json' },
-                status: 200
-            });
-        } catch (e) {
-            return new Response(JSON.stringify({ error: e.message }), { status: 500 });
-        }
-    },
 };
 
-// --- Helper Functions ---
+// --- Worker Request Handler ---
 
 const handleCORS = (request) => {
     const headers = new Headers();
     headers.set('Access-Control-Allow-Origin', request.headers.get('Origin') || '*');
-    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     headers.set('Access-Control-Max-Age', '86400');
     return new Response(null, { headers, status: 204 });
 };
 
-// Serves the full HTML dashboard
+const handleRequest = async (request, env) => {
+    const url = new URL(request.url);
+    const method = request.method;
+    const path = url.pathname;
+
+    if (method === 'OPTIONS') {
+        return handleCORS(request);
+    }
+
+    if (path.startsWith('/api/')) {
+        const routeKey = `${method} ${path}`;
+
+        // Attempt to match the exact route for CRUD operations
+        if (API_HANDLERS[routeKey]) {
+            return API_HANDLERS[routeKey](request, env, path);
+        }
+
+        // Handle the /api/reports route specifically
+        if (path === '/api/reports' && (method === 'GET' || method === 'POST')) {
+            const handlerKey = `${method} /api/reports`;
+            if (API_HANDLERS[handlerKey]) {
+                return API_HANDLERS[handlerKey](request, env);
+            }
+        }
+
+        return new Response('API Route Not Found', { status: 404 });
+    }
+
+    // Default: Serve the HTML map dashboard
+    return new Response(handleHTML(DB_NAME), {
+        headers: {
+            'Content-Type': 'text/html;charset=utf-8',
+            'Cache-Control': 'no-cache',
+        },
+    });
+};
+
+export default {
+    fetch: handleRequest,
+};
+
+// Serves the full HTML map dashboard
 const handleHTML = (DB_NAME) => {
-    // NOTE: All client-side template literals (\`${...}\`) are escaped (\`\${...}\`)
-    // to prevent the server-side Worker from misinterpreting them.
+    // Note: All client-side template literals (\`${...}\`) are escaped (\\`${...}\\`)
     const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trapper Tracker Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Trapper & Pet Safety Map</title>
+    
+    <!-- Leaflet CSS (for the map) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Custom Style -->
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .data-card { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05); }
-        .text-shadow { text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); }
-        .gradient-bg { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        .gradient-bg:hover { opacity: 0.9; }
+        html, body, #map {
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            gap: 15px;
+            
+        }
+
+        .control-button {
+            padding: 10px 18px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #btn-trapper {
+            background-color: #ef4444; /* Tailwind Red 500 */
+            color: white;
+        }
+        #btn-trapper:hover { background-color: #dc2626; } /* Tailwind Red 600 */
+
+        #btn-missing {
+            background-color: #3b82f6; /* Tailwind Blue 500 */
+            color: white;
+        }
+        #btn-missing:hover { background-color: #2563eb; } /* Tailwind Blue 600 */
+
+        /* --- Reporting Modal --- */
+        #report-modal {
+            display: none; 
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+            width: 90%;
+            max-width: 350px;
+        }
+        
+        #report-modal h3 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        #report-modal label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.875rem; /* sm */
+            color: #4b5563;
+        }
+
+        #report-modal input, #report-modal textarea {
+            width: 100%;
+            box-sizing: border-box; 
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        
+        #modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        #modal-cancel {
+            background-color: #f3f4f6;
+            color: #374151;
+            padding: 10px 15px;
+            border-radius: 6px;
+        }
+        #modal-submit {
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+        }
+
+        /* Leaflet Popups for Mobile Readability */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+        }
+        .leaflet-popup-content {
+            font-size: 14px;
+            padding: 10px;
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 sm:p-8">
-    <div id="app" class="max-w-7xl mx-auto">
-        <header class="mb-8 p-4 bg-white rounded-xl data-card">
-            <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 text-shadow">Trapper Tracker</h1>
-            <p class="text-lg text-gray-500 mt-2">Real-time Wildlife Population Dashboard (DB: **${DB_NAME}**)</p>
-        </header>
+<body>
 
-        <div id="loading" class="text-center p-8 bg-white rounded-xl data-card">
-            <svg class="animate-spin h-8 w-8 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="mt-2 text-gray-600">Loading data...</p>
-        </div>
-        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative data-card" role="alert">
-            <strong class="font-bold">Error!</strong>
-            <span class="block sm:inline" id="error-text"></span>
-        </div>
+    <!-- The Map Container -->
+    <div id="map"></div>
 
-        <div id="dashboard-content" class="hidden">
-            <div class="bg-white rounded-xl p-6 data-card mb-8">
-                <h2 id="form-title" class="text-2xl font-bold mb-4 text-gray-700">Add New Animal</h2>
-                <form id="animal-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <input type="hidden" id="animal-id">
-                    <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
-                        <input type="text" id="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border">
-                    </div>
-                    <div>
-                        <label for="habitat" class="block text-sm font-medium text-gray-700">Habitat</label>
-                        <input type="text" id="habitat" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border">
-                    </div>
-                    <div>
-                        <label for="population" class="block text-sm font-medium text-gray-700">Population Count</label>
-                        <input type="number" id="population" required min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border">
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-4 md:mt-0">
-                        <button type="submit" id="submit-button" class="gradient-bg text-white font-bold py-2 px-4 rounded-lg transition duration-150 w-full md:w-auto">Add Animal</button>
-                        <button type="button" id="cancel-button" class="hidden bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-150 w-full md:w-auto">Cancel</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="bg-white rounded-xl p-6 data-card">
-                <h2 class="text-2xl font-bold mb-4 text-gray-700">Tracked Animals</h2>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Habitat</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Population</th>
-                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="animal-list" class="bg-white divide-y divide-gray-200"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+    <!-- The Control Buttons -->
+    <div class="controls">
+        <button id="btn-trapper" class="control-button">🚩 Report Trapping Danger</button>
+        <button id="btn-missing" class="control-button">🐾 Report Missing Pet</button>
     </div>
 
-    <div id="confirm-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h3>
-            <p class="text-gray-600 mb-6">Are you sure you want to delete this animal entry?</p>
-            <div class="flex justify-end space-x-3">
-                <button id="modal-cancel" class="bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg hover:bg-gray-400 transition">Cancel</button>
-                <button id="modal-confirm" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700 transition">Delete</button>
-            </div>
+    <!-- The Pop-up Form (Modal) -->
+    <div id="report-modal">
+        <h3 id="modal-title">New Report</h3>
+        
+        <div id="modal-form-content">
+            <!-- Form fields injected here -->
+        </div>
+
+        <div id="modal-buttons">
+            <button id="modal-cancel" class="control-button">Cancel</button>
+            <button id="modal-submit" class="control-button"></button>
         </div>
     </div>
+    
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        const API_ENDPOINT = '/api/animals';
-        let isEditMode = false;
-        let currentAnimalId = null;
+        // --- CLIENT-SIDE JAVASCRIPT ---
+        const API_ENDPOINT = '/api/reports';
+        
+        // --- MAP INITIALIZATION ---
+        const startLocation = [39.82, -98.57]; 
+        const map = L.map('map').setView(startLocation, 4);
 
-        const loading = document.getElementById('loading');
-        const dashboardContent = document.getElementById('dashboard-content');
-        const errorText = document.getElementById('error-text');
-        const errorMessage = document.getElementById('error-message');
-        const animalList = document.getElementById('animal-list');
-        const animalForm = document.getElementById('animal-form');
-        const formTitle = document.getElementById('form-title');
-        const submitButton = document.getElementById('submit-button');
-        const cancelButton = document.getElementById('cancel-button');
-        const confirmModal = document.getElementById('confirm-modal');
-        const modalConfirm = document.getElementById('modal-confirm');
-        const modalCancel = document.getElementById('modal-cancel');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
 
-        const showLoading = () => {
-            loading.classList.remove('hidden');
-            dashboardContent.classList.add('hidden');
-            errorMessage.classList.add('hidden');
-        };
-        const showContent = () => {
-            loading.classList.add('hidden');
-            dashboardContent.classList.remove('hidden');
-            errorMessage.classList.add('hidden');
-        };
-        const showError = (message) => {
-            loading.classList.add('hidden');
-            dashboardContent.classList.add('hidden');
-            errorMessage.classList.remove('hidden');
-            errorText.textContent = message;
-        };
-        const resetForm = () => {
-            animalForm.reset();
-            isEditMode = false;
-            currentAnimalId = null;
-            formTitle.textContent = 'Add New Animal';
-            submitButton.textContent = 'Add Animal';
-            cancelButton.classList.add('hidden');
-            submitButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
-            submitButton.classList.add('gradient-bg');
+        // Try to find the user's location and zoom in
+        map.locate({setView: true, maxZoom: 12});
+        map.on('locationfound', (e) => map.setView(e.latlng, 14));
+
+        // --- CUSTOM ICONS ---
+        const trapperIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const missingIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // --- STATE & MODAL VARIABLES ---
+        let currentReportType = null; 
+        let currentLatLng = null; 
+        
+        const modal = document.getElementById('report-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalFormContent = document.getElementById('modal-form-content');
+        const modalSubmit = document.getElementById('modal-submit');
+        
+        // --- MODAL / UI FUNCTIONS ---
+
+        const showModal = (type) => {
+            if (type === 'trapper') {
+                modalTitle.innerText = '🚩 Report Trapping Danger';
+                modalFormContent.innerHTML = \`
+                    <label for="desc">Description (What did you see?)</label>
+                    <textarea id="desc" rows="3" placeholder="e.g., Saw a snare trap near the fence line."></textarea>
+                \`;
+                modalSubmit.innerText = 'Submit Danger Report';
+                modalSubmit.style.backgroundColor = '#ef4444'; 
+
+            } else if (type === 'missing') {
+                modalTitle.innerText = '🐾 Report Missing Pet';
+                modalFormContent.innerHTML = \`
+                    <label for="petName">Pet's Name:</label>
+                    <input type="text" id="petName" required placeholder="e.g., Buddy">
+                    
+                    <label for="contact">Your Contact (Phone/Email):</label>
+                    <input type="text" id="contact" required placeholder="So neighbors can reach you">
+                    
+                    <label for="desc">Description (Breed, color, size):</label>
+                    <textarea id="desc" rows="3" placeholder="e.g., Golden Retriever, very friendly, wearing a red collar."></textarea>
+                \`;
+                modalSubmit.innerText = 'Submit Missing Report';
+                modalSubmit.style.backgroundColor = '#3b82f6';
+            }
+            
+            modal.style.display = 'block'; 
+        }
+
+        const hideModal = () => {
+            modal.style.display = 'none';
+            document.body.style.cursor = ''; 
+            currentReportType = null;
+            currentLatLng = null;
+        }
+        
+        // --- DATA SUBMISSION ---
+
+        const submitReport = async () => {
+            const report = {
+                type: currentReportType,
+                lat: currentLatLng.lat,
+                lng: currentLatLng.lng,
+                description: document.getElementById('desc').value,
+            };
+
+            if (currentReportType === 'missing') {
+                report.petName = document.getElementById('petName').value.trim();
+                report.contact = document.getElementById('contact').value.trim();
+                
+                if (!report.petName || !report.contact) {
+                    alert('Please enter your pet\'s name and contact info.');
+                    return;
+                }
+            }
+            
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(report)
+                });
+
+                if (!response.ok) {
+                    throw new Error(\`Failed to save report: \${response.statusText}\`);
+                }
+                
+                hideModal();
+                await loadReports(); // Reload pins after successful submission
+                alert('Report submitted successfully! The map has been updated.');
+
+            } catch (error) {
+                console.error("Submission Error:", error);
+                alert('Error submitting report. Check the console for details.');
+            }
         };
 
-        const fetchData = async () => {
-            showLoading();
+        // --- DATA RETRIEVAL ---
+
+        const loadReports = async () => {
+            // Clear existing markers
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+            
             try {
                 const response = await fetch(API_ENDPOINT);
                 if (!response.ok) {
-                    const errorJson = await response.json().catch(() => ({}));
-                    if (errorJson.error && errorJson.error.includes("no such table")) {
-                        showError("Database table 'animals' not found. Please run the Initialization SQL in your D1 Console.");
-                        return;
-                    }
-                    throw new Error(\`HTTP error! status: \${response.status}\`);
+                    throw new Error(\`Failed to load data: \${response.statusText}\`);
                 }
-                const animals = await response.json();
-                renderAnimalList(animals);
-                showContent();
+                const reports = await response.json();
+                reports.forEach(addPinToMap);
+
             } catch (error) {
-                console.error("Fetch Error:", error);
-                showError(\`Failed to load data: \${error.message}. Please ensure the D1 database is bound and initialized.\`);
+                console.error("Load Error:", error);
+                // Inform the user specifically about the D1 issue
+                if (error.message.includes('reports table exists')) {
+                    alert("FATAL ERROR: The D1 database is not initialized. Please run the schema SQL in your Cloudflare console.");
+                } else {
+                    alert(\`Failed to load map data: \${error.message}\`);
+                }
             }
         };
 
-        const saveAnimal = async (event) => {
-            event.preventDefault();
-            const name = document.getElementById('name').value.trim();
-            const habitat = document.getElementById('habitat').value.trim();
-            const population = parseInt(document.getElementById('population').value);
+        const addPinToMap = (report) => {
+            let icon;
+            let popupContent;
 
-            if (!name || !habitat || isNaN(population) || population < 0) {
-                 showError("Please enter valid data for all fields (Population must be a non-negative number).");
-                 return;
-            } else {
-                errorMessage.classList.add('hidden');
-            }
-
-            const method = isEditMode ? 'PUT' : 'POST';
-            const url = isEditMode ? \`\${API_ENDPOINT}/\${currentAnimalId}\` : API_ENDPOINT;
-            const body = JSON.stringify({ name, habitat, population });
-
-            try {
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: body
-                });
-                if (!response.ok) {
-                    const errorJson = await response.json().catch(() => ({ message: 'Unknown error' }));
-                    throw new Error(\`Server failed to \${isEditMode ? 'update' : 'add'} animal: \${errorJson.error || response.statusText}\`);
-                }
-                resetForm();
-                await fetchData();
-            } catch (error) {
-                console.error("Save Error:", error);
-                showError(\`Operation Failed: \${error.message}\`);
-            }
-        };
-
-        const deleteAnimal = async (id) => {
-            confirmModal.classList.add('hidden');
-            try {
-                const response = await fetch(\`\${API_ENDPOINT}/\${id}\`, {
-                    method: 'DELETE'
-                });
-                if (!response.ok) {
-                    const errorJson = await response.json().catch(() => ({ message: 'Unknown error' }));
-                    throw new Error(\`Failed to delete animal: \${errorJson.message || response.statusText}\`);
-                }
-                await fetchData();
-            } catch (error) {
-                console.error("Delete Error:", error);
-                showError(\`Deletion Failed: \${error.message}\`);
-            }
-        };
-
-        const renderAnimalList = (animals) => {
-            animalList.innerHTML = '';
-            if (animals.length === 0) {
-                animalList.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No animals tracked yet. Add one above!</td></tr>';
-                return;
-            }
-            animals.forEach(animal => {
-                const row = animalList.insertRow();
-                row.className = 'hover:bg-green-50 transition duration-100';
-                
-                // Using innerHTML with escaped template literals for row content
-                row.innerHTML = \`
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900">\${animal.id}</td>
-                    <td class="px-4 py-3 text-sm text-gray-500">\${animal.name}</td>
-                    <td class="px-4 py-3 text-sm text-gray-500">\${animal.habitat}</td>
-                    <td class="px-4 py-3 text-sm text-gray-500 font-semibold">\${animal.population.toLocaleString()}</td>
-                    <td class="px-4 py-3 text-right text-sm font-medium space-x-2 whitespace-nowrap">
-                        <button class="text-yellow-600 hover:text-yellow-800 transition duration-150 p-1 rounded-md" data-id="\${animal.id}" data-name="\${animal.name}" data-habitat="\${animal.habitat}" data-population="\${animal.population}">Edit</button>
-                        <button class="text-red-600 hover:text-red-800 transition duration-150 p-1 rounded-md ml-2" data-id="\${animal.id}">Delete</button>
-                    </td>
+            if (report.type === 'trapper') {
+                icon = trapperIcon;
+                const timestamp = new Date(report.timestamp).toLocaleString();
+                popupContent = \`
+                    <div style="color: #ef4444;"><strong>🚨 TRAPPING DANGER REPORT</strong></div>
+                    <strong>Reported:</strong> \${timestamp}<br>
+                    <strong>Location:</strong> \${report.latitude.toFixed(4)}, \${report.longitude.toFixed(4)}<br>
+                    <strong>Details:</strong> \${report.description || 'N/A'}
                 \`;
-            });
-        };
-
-        const startEdit = (btn) => {
-            isEditMode = true;
-            currentAnimalId = btn.dataset.id;
-            document.getElementById('name').value = btn.dataset.name;
-            document.getElementById('habitat').value = btn.dataset.habitat;
-            document.getElementById('population').value = btn.dataset.population;
-            formTitle.textContent = \`Update Animal (ID: \${currentAnimalId})\`;
-            submitButton.textContent = 'Save Changes';
-            cancelButton.classList.remove('hidden');
-            submitButton.classList.remove('gradient-bg');
-            submitButton.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
-            window.scrollTo({ top: document.getElementById('animal-form').offsetTop - 10, behavior: 'smooth' });
-        };
-
-        const showDeleteModal = (id) => {
-            currentAnimalId = id;
-            confirmModal.classList.remove('hidden');
-            modalConfirm.onclick = () => deleteAnimal(currentAnimalId);
-        };
-
-        // --- Event Listeners and Init ---
-        animalForm.addEventListener('submit', saveAnimal);
-        cancelButton.addEventListener('click', resetForm);
-        modalCancel.addEventListener('click', () => confirmModal.classList.add('hidden'));
-        
-        // Event delegation for Edit/Delete buttons
-        animalList.addEventListener('click', (e) => {
-            if (e.target.textContent === 'Edit') {
-                startEdit(e.target);
-            } else if (e.target.textContent === 'Delete') {
-                showDeleteModal(e.target.dataset.id);
+            } else if (report.type === 'missing') {
+                icon = missingIcon;
+                const timestamp = new Date(report.timestamp).toLocaleString();
+                popupContent = \`
+                    <div style="color: #3b82f6;"><strong>🐕 MISSING PET: \${report.petName}</strong></div>
+                    <strong>Last Seen:</strong> \${timestamp}<br>
+                    <strong>Contact:</strong> \${report.contact}<br>
+                    <strong>Details:</strong> \${report.description || 'No detailed description provided.'}
+                \`;
             }
+
+            L.marker([report.latitude, report.longitude], { icon: icon })
+                .addTo(map)
+                .bindPopup(popupContent, { minWidth: 200, maxWidth: 300 });
+        }
+
+        // --- EVENT HANDLERS ---
+        
+        // 1. Activate report mode when buttons are clicked
+        document.getElementById('btn-trapper').addEventListener('click', () => {
+            currentReportType = 'trapper';
+            document.body.style.cursor = 'crosshair';
+            alert('Click on the map where you have confirmed trapping danger to place the red pin.');
         });
 
-        document.addEventListener('DOMContentLoaded', fetchData);
+        document.getElementById('btn-missing').addEventListener('click', () => {
+            currentReportType = 'missing';
+            document.body.style.cursor = 'crosshair';
+            alert('Click on the map where your pet was last seen to place the blue pin.');
+        });
+
+        // 2. Capture map click to open the modal
+        map.on('click', (e) => {
+            if (!currentReportType) return;
+            currentLatLng = e.latlng;
+            showModal(currentReportType);
+        });
+
+        // 3. Modal control
+        document.getElementById('modal-cancel').addEventListener('click', hideModal);
+        document.getElementById('modal-submit').addEventListener('click', submitReport);
+
+
+        // --- INITIAL LOAD ---
+        loadReports();
+
     </script>
 </body>
 </html>
 `;
-    // Set 'Cache-Control' to prevent browser caching of the dashboard page.
-    return new Response(htmlContent, {
-        headers: {
-            'Content-Type': 'text/html;charset=UTF-8',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-        },
-        status: 200
-    });
+    return htmlContent;
 };
 
-
-// --- Main Worker Handler ---
-export default {
-    async fetch(request, env, ctx) {
-        const url = new URL(request.url);
-        const path = url.pathname;
-        const method = request.method;
-
-        // 1. Handle CORS preflight requests
-        if (method === 'OPTIONS') {
-            return handleCORS(request);
-        }
-
-        // 2. API routing
-        const apiPath = path.startsWith('/api/') ? path : null;
-        // Construct the base route key for matching (e.g., "GET /api/animals")
-        const routeKey = `${method} ${apiPath ? apiPath.split('/').slice(0, 3).join('/') : ''}`;
-
-        let apiRouteMatch = Object.keys(API_HANDLERS).find(key => {
-            // Check for exact path matches (e.g., GET /api/animals)
-            if (key === routeKey) return true;
-
-            // Check for dynamic path matches (e.g., DELETE /api/animals/:id)
-            if (key.endsWith('/:id') && apiPath) {
-                const baseRoute = key.substring(0, key.lastIndexOf('/'));
-                const pathSegments = apiPath.split('/');
-                // Check if path has 4 segments (e.g., /api/animals/1) and the base matches
-                return pathSegments.length === 4 && pathSegments[3] && pathSegments.slice(0, 3).join('/') === baseRoute;
-            }
-            return false;
-        });
-
-        if (apiRouteMatch) {
-            const handler = API_HANDLERS[apiRouteMatch];
-            // Execute the handler and add CORS headers
-            const response = await handler(request, env, path);
-            response.headers.set('Access-Control-Allow-Origin', request.headers.get('Origin') || '*');
-            return response;
-        }
-
-        // 3. Serve the static HTML file for all non-API paths
-        if (path === '/' || path.includes('/html')) {
-            return handleHTML(DB_NAME);
-        }
-
-        // 4. Default response (Not Found)
-        return new Response('Not Found', { status: 404 });
-    }
-};
