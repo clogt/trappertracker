@@ -135,12 +135,14 @@ const handleHTML = (DB_NAME) => {
     
     <!-- Custom Style -->
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         html, body, #map {
             height: 100vh;
             width: 100vw;
             margin: 0;
             padding: 0;
             font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent body scroll */
         }
 
         .controls {
@@ -248,6 +250,21 @@ const handleHTML = (DB_NAME) => {
             font-size: 14px;
             padding: 10px;
         }
+        
+        /* Mobile adjustment for controls */
+        @media (max-width: 600px) {
+            .controls {
+                width: 90%;
+                left: 5%;
+                transform: translateX(0);
+                flex-direction: column;
+                gap: 8px;
+            }
+            .control-button {
+                width: 100%;
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -280,220 +297,239 @@ const handleHTML = (DB_NAME) => {
 
     <script>
         // --- CLIENT-SIDE JAVASCRIPT ---
-        const API_ENDPOINT = '/api/reports';
         
-        // --- MAP INITIALIZATION ---
-        const startLocation = [39.82, -98.57]; 
-        const map = L.map('map').setView(startLocation, 4);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19
-        }).addTo(map);
-
-        // Try to find the user's location and zoom in
-        map.locate({setView: true, maxZoom: 12});
-        map.on('locationfound', (e) => map.setView(e.latlng, 14));
-
-        // --- CUSTOM ICONS ---
-        const trapperIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-
-        const missingIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-
-        // --- STATE & MODAL VARIABLES ---
-        let currentReportType = null; 
-        let currentLatLng = null; 
+        // Wrap everything in an event listener to ensure all HTML elements are loaded before running the script
+        document.addEventListener('DOMContentLoaded', () => {
         
-        const modal = document.getElementById('report-modal');
-        const modalTitle = document.getElementById('modal-title');
-        const modalFormContent = document.getElementById('modal-form-content');
-        const modalSubmit = document.getElementById('modal-submit');
-        
-        // --- MODAL / UI FUNCTIONS ---
-
-        const showModal = (type) => {
-            if (type === 'trapper') {
-                modalTitle.innerText = '🚩 Report Trapping Danger';
-                modalFormContent.innerHTML = \`
-                    <label for="desc">Description (What did you see?)</label>
-                    <textarea id="desc" rows="3" placeholder="e.g., Saw a snare trap near the fence line."></textarea>
-                \`;
-                modalSubmit.innerText = 'Submit Danger Report';
-                modalSubmit.style.backgroundColor = '#ef4444'; 
-
-            } else if (type === 'missing') {
-                modalTitle.innerText = '🐾 Report Missing Pet';
-                modalFormContent.innerHTML = \`
-                    <label for="petName">Pet's Name:</label>
-                    <input type="text" id="petName" required placeholder="e.g., Buddy">
-                    
-                    <label for="contact">Your Contact (Phone/Email):</label>
-                    <input type="text" id="contact" required placeholder="So neighbors can reach you">
-                    
-                    <label for="desc">Description (Breed, color, size):</label>
-                    <textarea id="desc" rows="3" placeholder="e.g., Golden Retriever, very friendly, wearing a red collar."></textarea>
-                \`;
-                modalSubmit.innerText = 'Submit Missing Report';
-                modalSubmit.style.backgroundColor = '#3b82f6';
+            // Check if Leaflet (L) is available. If not, alert the user to a network block.
+            if (typeof L === 'undefined') {
+                document.body.innerHTML = \`<div style="padding: 20px; font-family: sans-serif; text-align: center;">
+                    <h1>Loading Error</h1>
+                    <p>Could not load the Leaflet map library. Please check your network connection or try a different browser, as some networks may block external JavaScript resources.</p>
+                </div>\`;
+                return;
             }
             
-            modal.style.display = 'block'; 
-        }
+            const API_ENDPOINT = '/api/reports';
+            
+            // --- MAP INITIALIZATION ---
+            const startLocation = [39.82, -98.57]; 
+            const map = L.map('map').setView(startLocation, 4);
 
-        const hideModal = () => {
-            modal.style.display = 'none';
-            document.body.style.cursor = ''; 
-            currentReportType = null;
-            currentLatLng = null;
-        }
-        
-        // --- DATA SUBMISSION ---
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(map);
 
-        const submitReport = async () => {
-            const report = {
-                type: currentReportType,
-                lat: currentLatLng.lat,
-                lng: currentLatLng.lng,
-                description: document.getElementById('desc').value,
+            // Try to find the user's location and zoom in
+            map.locate({setView: true, maxZoom: 12});
+            map.on('locationfound', (e) => map.setView(e.latlng, 14));
+
+            // --- CUSTOM ICONS ---
+            const trapperIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
+            const missingIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
+            // --- STATE & MODAL VARIABLES ---
+            let currentReportType = null; 
+            let currentLatLng = null; 
+            
+            const modal = document.getElementById('report-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalFormContent = document.getElementById('modal-form-content');
+            const modalSubmit = document.getElementById('modal-submit');
+            
+            // --- MODAL / UI FUNCTIONS ---
+
+            const showModal = (type) => {
+                if (type === 'trapper') {
+                    modalTitle.innerText = '🚩 Report Trapping Danger';
+                    modalFormContent.innerHTML = \`
+                        <label for="desc">Description (What did you see?)</label>
+                        <textarea id="desc" rows="3" placeholder="e.g., Saw a snare trap near the fence line."></textarea>
+                    \`;
+                    modalSubmit.innerText = 'Submit Danger Report';
+                    modalSubmit.style.backgroundColor = '#ef4444'; 
+
+                } else if (type === 'missing') {
+                    modalTitle.innerText = '🐾 Report Missing Pet';
+                    modalFormContent.innerHTML = \`
+                        <label for="petName">Pet's Name:</label>
+                        <input type="text" id="petName" required placeholder="e.g., Buddy">
+                        
+                        <label for="contact">Your Contact (Phone/Email):</label>
+                        <input type="text" id="contact" required placeholder="So neighbors can reach you">
+                        
+                        <label for="desc">Description (Breed, color, size):</label>
+                        <textarea id="desc" rows="3" placeholder="e.g., Golden Retriever, very friendly, wearing a red collar."></textarea>
+                    \`;
+                    modalSubmit.innerText = 'Submit Missing Report';
+                    modalSubmit.style.backgroundColor = '#3b82f6';
+                }
+                
+                modal.style.display = 'block'; 
+            }
+
+            const hideModal = () => {
+                modal.style.display = 'none';
+                document.body.style.cursor = ''; 
+                currentReportType = null;
+                currentLatLng = null;
+            }
+            
+            // --- DATA SUBMISSION ---
+
+            const submitReport = async () => {
+                const report = {
+                    type: currentReportType,
+                    lat: currentLatLng.lat,
+                    lng: currentLatLng.lng,
+                    description: document.getElementById('desc').value,
+                };
+
+                if (currentReportType === 'missing') {
+                    report.petName = document.getElementById('petName').value.trim();
+                    report.contact = document.getElementById('contact').value.trim();
+                    
+                    if (!report.petName || !report.contact) {
+                        alert('Please enter your pet\'s name and contact info.');
+                        return;
+                    }
+                }
+                
+                try {
+                    const response = await fetch(API_ENDPOINT, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(report)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(\`Failed to save report: \${response.statusText}\`);
+                    }
+                    
+                    hideModal();
+                    await loadReports(); // Reload pins after successful submission
+                    alert('Report submitted successfully! The map has been updated.');
+
+                } catch (error) {
+                    console.error("Submission Error:", error);
+                    alert('Error submitting report. Check the console for details.');
+                }
             };
 
-            if (currentReportType === 'missing') {
-                report.petName = document.getElementById('petName').value.trim();
-                report.contact = document.getElementById('contact').value.trim();
-                
-                if (!report.petName || !report.contact) {
-                    alert('Please enter your pet\'s name and contact info.');
-                    return;
-                }
-            }
-            
-            try {
-                const response = await fetch(API_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(report)
+            // --- DATA RETRIEVAL ---
+
+            const loadReports = async () => {
+                // Clear existing markers
+                map.eachLayer((layer) => {
+                    if (layer instanceof L.Marker) {
+                        map.removeLayer(layer);
+                    }
                 });
-
-                if (!response.ok) {
-                    throw new Error(\`Failed to save report: \${response.statusText}\`);
-                }
                 
-                hideModal();
-                await loadReports(); // Reload pins after successful submission
-                alert('Report submitted successfully! The map has been updated.');
+                try {
+                    const response = await fetch(API_ENDPOINT);
+                    if (!response.ok) {
+                        // Attempt to read the error body
+                        const errorBody = await response.json().catch(() => ({ message: response.statusText }));
+                        throw new Error(\`\${errorBody.message || errorBody.error}\`);
+                    }
+                    const reports = await response.json();
+                    reports.forEach(addPinToMap);
 
-            } catch (error) {
-                console.error("Submission Error:", error);
-                alert('Error submitting report. Check the console for details.');
-            }
-        };
-
-        // --- DATA RETRIEVAL ---
-
-        const loadReports = async () => {
-            // Clear existing markers
-            map.eachLayer((layer) => {
-                if (layer instanceof L.Marker) {
-                    map.removeLayer(layer);
+                } catch (error) {
+                    console.error("Load Error:", error);
+                    // Inform the user specifically about the D1 issue
+                    if (error.message.includes('reports table exists')) {
+                        // This specific message comes from the Worker API Handler if the table is missing
+                        alert("FATAL ERROR: The D1 database table 'reports' is missing. Please re-run the schema SQL in your Cloudflare console.");
+                    } else {
+                        // General network/fetch failure
+                        // We avoid showing the console error directly to the user but give them a general failure message.
+                        // Since we know the schema is done, this is likely a network issue.
+                        // Check if the map is initialized before assuming a D1 error.
+                        // alert(\`Failed to load map data. Please check your network or D1 binding. Error: \${error.message}\`);
+                    }
                 }
-            });
+            };
+
+            const addPinToMap = (report) => {
+                let icon;
+                let popupContent;
+
+                if (report.type === 'trapper') {
+                    icon = trapperIcon;
+                    const timestamp = new Date(report.timestamp).toLocaleString();
+                    popupContent = \`
+                        <div style="color: #ef4444; font-weight: bold; margin-bottom: 5px;">🚨 TRAPPING DANGER REPORT</div>
+                        <strong>Reported:</strong> \${timestamp}<br>
+                        <strong>Location:</strong> \${report.latitude.toFixed(4)}, \${report.longitude.toFixed(4)}<br>
+                        <strong>Details:</strong> \${report.description || 'N/A'}
+                    \`;
+                } else if (report.type === 'missing') {
+                    icon = missingIcon;
+                    const timestamp = new Date(report.timestamp).toLocaleString();
+                    popupContent = \`
+                        <div style="color: #3b82f6; font-weight: bold; margin-bottom: 5px;">🐕 MISSING PET: \${report.petName}</div>
+                        <strong>Last Seen:</strong> \${timestamp}<br>
+                        <strong>Contact:</strong> \${report.contact}<br>
+                        <strong>Details:</strong> \${report.description || 'No detailed description provided.'}
+                    \`;
+                }
+
+                L.marker([report.latitude, report.longitude], { icon: icon })
+                    .addTo(map)
+                    .bindPopup(popupContent, { minWidth: 200, maxWidth: 300 });
+            }
+
+            // --- EVENT HANDLERS ---
             
-            try {
-                const response = await fetch(API_ENDPOINT);
-                if (!response.ok) {
-                    throw new Error(\`Failed to load data: \${response.statusText}\`);
-                }
-                const reports = await response.json();
-                reports.forEach(addPinToMap);
+            // 1. Activate report mode when buttons are clicked
+            document.getElementById('btn-trapper').addEventListener('click', () => {
+                currentReportType = 'trapper';
+                document.body.style.cursor = 'crosshair';
+                alert('Click on the map where you have confirmed trapping danger to place the red pin.');
+            });
 
-            } catch (error) {
-                console.error("Load Error:", error);
-                // Inform the user specifically about the D1 issue
-                if (error.message.includes('reports table exists')) {
-                    alert("FATAL ERROR: The D1 database is not initialized. Please run the schema SQL in your Cloudflare console.");
-                } else {
-                    alert(\`Failed to load map data: \${error.message}\`);
-                }
-            }
-        };
+            document.getElementById('btn-missing').addEventListener('click', () => {
+                currentReportType = 'missing';
+                document.body.style.cursor = 'crosshair';
+                alert('Click on the map where your pet was last seen to place the blue pin.');
+            });
 
-        const addPinToMap = (report) => {
-            let icon;
-            let popupContent;
+            // 2. Capture map click to open the modal
+            map.on('click', (e) => {
+                if (!currentReportType) return;
+                currentLatLng = e.latlng;
+                showModal(currentReportType);
+            });
 
-            if (report.type === 'trapper') {
-                icon = trapperIcon;
-                const timestamp = new Date(report.timestamp).toLocaleString();
-                popupContent = \`
-                    <div style="color: #ef4444;"><strong>🚨 TRAPPING DANGER REPORT</strong></div>
-                    <strong>Reported:</strong> \${timestamp}<br>
-                    <strong>Location:</strong> \${report.latitude.toFixed(4)}, \${report.longitude.toFixed(4)}<br>
-                    <strong>Details:</strong> \${report.description || 'N/A'}
-                \`;
-            } else if (report.type === 'missing') {
-                icon = missingIcon;
-                const timestamp = new Date(report.timestamp).toLocaleString();
-                popupContent = \`
-                    <div style="color: #3b82f6;"><strong>🐕 MISSING PET: \${report.petName}</strong></div>
-                    <strong>Last Seen:</strong> \${timestamp}<br>
-                    <strong>Contact:</strong> \${report.contact}<br>
-                    <strong>Details:</strong> \${report.description || 'No detailed description provided.'}
-                \`;
-            }
-
-            L.marker([report.latitude, report.longitude], { icon: icon })
-                .addTo(map)
-                .bindPopup(popupContent, { minWidth: 200, maxWidth: 300 });
-        }
-
-        // --- EVENT HANDLERS ---
-        
-        // 1. Activate report mode when buttons are clicked
-        document.getElementById('btn-trapper').addEventListener('click', () => {
-            currentReportType = 'trapper';
-            document.body.style.cursor = 'crosshair';
-            alert('Click on the map where you have confirmed trapping danger to place the red pin.');
-        });
-
-        document.getElementById('btn-missing').addEventListener('click', () => {
-            currentReportType = 'missing';
-            document.body.style.cursor = 'crosshair';
-            alert('Click on the map where your pet was last seen to place the blue pin.');
-        });
-
-        // 2. Capture map click to open the modal
-        map.on('click', (e) => {
-            if (!currentReportType) return;
-            currentLatLng = e.latlng;
-            showModal(currentReportType);
-        });
-
-        // 3. Modal control
-        document.getElementById('modal-cancel').addEventListener('click', hideModal);
-        document.getElementById('modal-submit').addEventListener('click', submitReport);
+            // 3. Modal control
+            document.getElementById('modal-cancel').addEventListener('click', hideModal);
+            document.getElementById('modal-submit').addEventListener('click', submitReport);
 
 
-        // --- INITIAL LOAD ---
-        loadReports();
-
+            // --- INITIAL LOAD ---
+            loadReports();
+        }); // End of DOMContentLoaded
     </script>
 </body>
 </html>
 `;
     return htmlContent;
 };
-
