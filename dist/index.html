@@ -4,8 +4,112 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrapperTracker - Danger Zone Map</title>
-    <link href="assets/css/style.css" rel="stylesheet">
-    </head>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/SVRQLilfPzWJqUj8A="
+        crossorigin=""/>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex; /* Flexbox for layout */
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 2; /* Keep header on top */
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        header nav a {
+            color: #ddd;
+            margin-left: 15px;
+            text-decoration: none;
+        }
+        main {
+            flex-grow: 1; /* Allows main to take up remaining height */
+            position: relative;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1; /* Map is layer 1 */
+        }
+        #controls-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 2; /* Controls are layer 2, on top of map */
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .cta-button.primary {
+            background-color: #d9534f;
+            color: white;
+            padding: 8px 15px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .cta-button.primary:hover {
+            background-color: #c9302c;
+        }
+
+        /* --- CSS ANIMATION FOR THE PULSING RED BLIP --- */
+        .pulse-marker {
+            background-color: #ff0000;
+            width: 15px;
+            height: 15px;
+            display: block;
+            border-radius: 50%;
+            position: relative;
+        }
+        .pulse-marker::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 3px solid #ff0000;
+            border-radius: 50%;
+            animation: pulse-ring 1.5s infinite;
+        }
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(3.5);
+                opacity: 0;
+            }
+        }
+        .leaflet-marker-icon.leaflet-div-icon {
+            margin-top: -7.5px !important;
+            margin-left: -7.5px !important;
+        }
+    </style>
+</head>
 <body>
     <header>
         <h1>TrapperTracker: Community Awareness Map</h1>
@@ -16,7 +120,7 @@
             <a href="/login.html">Login/Register</a>
         </nav>
     </header>
-
+  
     <main>
         <div id="controls-container">
             <input type="text" id="location-search" placeholder="Search City, Zip, or Address..." />
@@ -36,15 +140,63 @@
             
             <a href="/submit.html" class="cta-button primary">Submit a Trapping Report</a>
         </div>
-
+        
         <div id="map">
-            </div>
-
+        </div>
+        
         <div id="advanced-filter-modal" class="modal">
-            </div>
+        </div>
     </main>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20n6c9d6tC9/gXF+pY9K5j+Mv1S9V/pY5/y5S85nB28="
+        crossorigin=""></script>
 
-    <script src="assets/js/map.js"></script>
-    <script src="assets/js/ui.js"></script>
+    <script>
+        // --- 1. INITIALIZE THE MAP ---
+        const map = L.map('map').setView([40.730610, -73.935242], 12); 
+
+        // Add the base tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // --- 2. DANGER ZONES DATA ---
+        // REPLACE THESE EXAMPLE COORDINATES WITH YOUR ACTUAL LOCATIONS
+        const dangerZones = [
+            { lat: 40.7648, lng: -73.9774, label: "Area A: High Trapper Activity - Near Main Road" }, 
+            { lat: 40.7259, lng: -73.9880, label: "Area B: Recent Trap Sightings - Deep Woods" },
+            { lat: 40.6925, lng: -73.9866, label: "Area C: Unofficial Trail - Frequent Patrols" },
+            { lat: 40.7484, lng: -73.9857, label: "Area D: Central Park South Entrance" }
+        ];
+        
+        // --- 3. CUSTOM PULSING ICON SETUP ---
+        const pulsingIcon = L.divIcon({
+            className: 'pulse-container',
+            html: '<div class="pulse-marker"></div>',
+            iconSize: [15, 15]
+        });
+
+        // --- 4. ADD PULSING MARKERS TO THE MAP ---
+        dangerZones.forEach(zone => {
+            L.marker([zone.lat, zone.lng], { icon: pulsingIcon })
+                .addTo(map)
+                // Add a popup to give details when the user clicks the blip
+                .bindPopup(`<strong>DANGER ZONE</strong><br>${zone.label}`);
+        });
+
+        // --- 5. SIMPLE UI INTERACTIVITY (Replaces assets/js/ui.js functionality) ---
+        // This is a placeholder; full search/filter functionality requires a backend.
+        document.getElementById('advanced-filter-btn').addEventListener('click', () => {
+            alert("Advanced Search is not yet implemented in this version!");
+        });
+        
+        document.getElementById('toggle-lost-pets').addEventListener('change', (e) => {
+            console.log("Show Lost Pets Toggled:", e.target.checked);
+            // Future logic to hide/show pet markers would go here
+        });
+
+    </script>
 </body>
 </html>
