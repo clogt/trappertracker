@@ -134,14 +134,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         stateInput.value = '';
                         zipInput.value = '';
                     } else {
-                        alert('Address not found.');
+                        displayErrorMessage('Address not found.'); // Replaced alert
                     }
                 } catch (error) {
                     console.error('Error geocoding address:', error);
-                    alert('Error geocoding address. Please try again.');
+                    displayErrorMessage('Error geocoding address. Please try again.'); // Replaced alert
                 }
             } else {
-                alert('Please enter at least a City, State, or Zip Code.');
+                displayErrorMessage('Please enter at least a City, State, or Zip Code.'); // Replaced alert
             }
         });
     }
