@@ -13,4 +13,4 @@ database_name = "trappertracker"
 database_id = "58d143ae-9c04-4136-b155-10f616846291"
 
 [assets]
-directory = "."
+directory = "./assets"

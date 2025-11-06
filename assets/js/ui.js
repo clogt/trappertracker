@@ -51,8 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <input type="text" id="ownerContact" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200" required>
                     </div>
                     <div>
-                        <label for="photoUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Link to Photo (Optional)</label>
-                        <input type="url" id="photoUrl" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200" placeholder="https://imgur.com/your-image">
+                        <label for="photoUpload" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Upload Photo (Optional)</label>
+                        <input type="file" id="photoUpload" accept="image/*" class="mt-1 block w-full text-gray-900 dark:text-gray-200">
+                        <input type="hidden" id="photoUrl"> <!-- Hidden field to store the uploaded URL -->
                     </div>
                 </div>
                 <div>
@@ -73,8 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <input type="text" id="contactInfo" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200" required>
                     </div>
                     <div>
-                        <label for="photoUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Link to Photo (Optional)</label>
-                        <input type="url" id="photoUrl" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200" placeholder="https://imgur.com/your-image">
+                        <label for="photoUpload" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Upload Photo (Optional)</label>
+                        <input type="file" id="photoUpload" accept="image/*" class="mt-1 block w-full text-gray-900 dark:text-gray-200">
+                        <input type="hidden" id="photoUrl"> <!-- Hidden field to store the uploaded URL -->
                     </div>
                 </div>
                 <div>
@@ -166,16 +168,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 description: document.getElementById('description')?.value || ''
             };
 
+            // Helper function to upload image
+            async function uploadImage(file) {
+                const formData = new FormData();
+                formData.append('image', file);
+
+                try {
+                    const response = await fetch('/api/upload-image', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        return result.url; // Assuming the API returns { url: '...' }
+                    } else {
+                        const error = await response.json();
+                        displayErrorMessage(`Image upload failed: ${error.error}`);
+                        return null;
+                    }
+                } catch (error) {
+                    console.error('Error uploading image:', error);
+                    displayErrorMessage('An unexpected error occurred during image upload.');
+                    return null;
+                }
+            }
+
             // Gather data from the correct dynamic form
+            if (type === 'lostPet' || type === 'foundPet') {
+                const photoUploadInput = document.getElementById('photoUpload');
+                if (photoUploadInput && photoUploadInput.files && photoUploadInput.files.length > 0) {
+                    const imageUrl = await uploadImage(photoUploadInput.files[0]);
+                    if (imageUrl) {
+                        reportData.photo_url = imageUrl;
+                    } else {
+                        // If upload failed, prevent report submission or handle as needed
+                        return;
+                    }
+                } else {
+                    reportData.photo_url = ''; // No file uploaded
+                }
+            }
+
             if (type === 'lostPet') {
                 reportData.pet_name = document.getElementById('petName').value;
                 reportData.species_breed = document.getElementById('speciesBreed').value;
                 reportData.owner_contact_email = document.getElementById('ownerContact').value;
-                reportData.photo_url = document.getElementById('photoUrl').value;
             } else if (type === 'foundPet') {
                 reportData.species_breed = document.getElementById('speciesBreed').value;
                 reportData.contact_info = document.getElementById('contactInfo').value;
-                reportData.photo_url = document.getElementById('photoUrl').value;
             } else if (type === 'dangerousAnimal') {
                 reportData.animal_type = document.getElementById('animalType').value;
             }

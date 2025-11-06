@@ -51,8 +51,8 @@ The project is public and open-source to foster trust, transparency, and communi
 ### Phase 3: Post-Launch / V2.0 Features
 - [X] **AI-Powered Matching:** Engine to match `lost` and `found` pet reports.
 - [X] **Notification System:** Email alerts for matched pets.
-- [ ] **Premium Admin App:** Design and development of the paid application.
-- [ ] **Direct Image Uploads:** Implement a solution for direct photo uploads.
+- [X] **Premium Admin App:** Design and development of the paid application. (Initial scaffolding complete)
+- [X] **Direct Image Uploads:** Implement a solution for direct photo uploads.
 
 ## 4. Development Process
 
