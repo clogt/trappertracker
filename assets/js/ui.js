@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const endDate = endDateInput.value;
 
             if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-                alert('Start date cannot be after end date.');
+                displayErrorMessage('Start date cannot be after end date.'); // Replaced alert
                 return;
             }
 
