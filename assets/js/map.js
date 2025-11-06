@@ -2,112 +2,122 @@
 
 const MAP_API_ENDPOINT = '/api/mapdata'; // Worker endpoint
 let map;
-let trapperMarkers = [];
-let petMarkers = [];
+
+// Simple HTML sanitizer
+const sanitizeHTML = (str) => {
+    const temp = document.createElement('div');
+    temp.textContent = str;
+    return temp.innerHTML;
+};
+
+// Marker arrays for each layer
+let layerGroups = {
+    trappers: L.layerGroup(),
+    lost_pets: L.layerGroup(),
+    found_pets: L.layerGroup(),
+    dangerous_animals: L.layerGroup()
+};
 
 function initMap() {
-    // 1. Initialize Leaflet map in the #map container
     map = L.map('map').setView([39.8283, -98.5795], 4); // Centered on US
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // Listen for map clicks to place markers
+    // Add layer groups to the map
+    for (const key in layerGroups) {
+        layerGroups[key].addTo(map);
+    }
+
+    // Listen for map clicks to place markers in the report form
     map.on('click', function(e) {
-        document.getElementById('location').value = `${e.latlng.lat}, ${e.latlng.lng}`;
+        const locationInput = document.getElementById('location');
+        if(locationInput) {
+            locationInput.value = `${e.latlng.lat}, ${e.latlng.lng}`;
+        }
     });
 
-    // 2. Load data immediately with default filters
-    fetchMapData();
-
-    // 3. Attach listeners to the filters
-    document.getElementById('recency-filter').addEventListener('change', fetchMapData);
+    // Attach listeners to all layer toggles and filters
+    document.getElementById('toggle-trappers').addEventListener('change', fetchMapData);
     document.getElementById('toggle-lost-pets').addEventListener('change', fetchMapData);
-    document.getElementById('advanced-filter-btn').addEventListener('click', showAdvancedFilter);
+    document.getElementById('toggle-found-pets').addEventListener('change', fetchMapData);
+    document.getElementById('toggle-dangerous-animals').addEventListener('change', fetchMapData);
+    document.getElementById('recency-filter')?.addEventListener('change', fetchMapData);
+    document.getElementById('advanced-filter-btn')?.addEventListener('click', () => advancedFilterModal.classList.remove('hidden'));
+
+    // Initial data load
+    fetchMapData();
 }
 
-function fetchMapData(timeStart=null, timeEnd=null) {
-    const recency = document.getElementById('recency-filter').value;
-    const showPets = document.getElementById('toggle-lost-pets').checked;
-    const bounds = map.getBounds(); // Get current map viewport
+function fetchMapData(timeStart = null, timeEnd = null) {
+    const recency = document.getElementById('recency-filter')?.value || 'all';
+    const bounds = map.getBounds();
 
-    // Construct the query parameters
     const params = new URLSearchParams({
-        recency: recency,
-        show_pets: showPets,
         lat_min: bounds.getSouth(),
         lat_max: bounds.getNorth(),
         lon_min: bounds.getWest(),
         lon_max: bounds.getEast(),
-        time_start: timeStart,
-        time_end: timeEnd
+        show_trappers: document.getElementById('toggle-trappers').checked,
+        show_lost_pets: document.getElementById('toggle-lost-pets').checked,
+        show_found_pets: document.getElementById('toggle-found-pets').checked,
+        show_dangerous_animals: document.getElementById('toggle-dangerous-animals').checked,
     });
 
-    // Call the Cloudflare Worker API
+    if (timeStart) params.append('time_start', timeStart);
+    if (timeEnd) params.append('time_end', timeEnd);
+    if (recency !== 'all') params.append('recency', recency);
+
     fetch(`${MAP_API_ENDPOINT}?${params.toString()}`)
         .then(res => res.json())
         .then(data => {
-            drawBlips(data.trappers, data.pets);
+            drawMapData(data);
         })
         .catch(err => console.error("Error fetching map data:", err));
 }
 
-function drawBlips(trapperData, petData) {
-    // Clear existing trapper markers
-    trapperMarkers.forEach(marker => marker.remove());
-    trapperMarkers = [];
+window.fetchMapData = fetchMapData; // Make it globally accessible
 
-    // Clear existing pet markers
-    petMarkers.forEach(marker => marker.remove());
-    petMarkers = [];
+function drawMapData(data) {
+    // Clear all layers
+    for (const key in layerGroups) {
+        layerGroups[key].clearLayers();
+    }
 
-    // 1. Draw Trapper Blips (Trapper Priority)
-    trapperData.forEach(blip => {
+    // Draw Trapper Blips
+    data.trappers?.forEach(blip => {
         const blipAgeDays = (Date.now() - new Date(blip.report_timestamp)) / (1000 * 60 * 60 * 24);
-        
-        let markerColor = 'grey'; // Default: Historical record
-        if (blipAgeDays <= 7) {
-            markerColor = 'red'; // HIGH CONFIDENCE/RECENT ACTIVITY
-        } else if (blipAgeDays <= 30) {
-            markerColor = 'orange';   // MODERATE CONFIDENCE
-        }
-
+        let markerColor = blipAgeDays <= 7 ? 'red' : (blipAgeDays <= 30 ? 'orange' : 'grey');
         const circle = L.circle([blip.latitude, blip.longitude], {
-            color: markerColor,
-            fillColor: markerColor,
-            fillOpacity: 0.5,
-            radius: 152.4 // 500 feet in meters
-        }).addTo(map);
-
-        // Pop-up displays crucial reliability data
-        const popupContent = `
-            <h3>Reported Trapping Zone</h3>
-            <p><strong>Last Reported:</strong> ${new Date(blip.report_timestamp).toLocaleString()}</p>
-            <p style="color: ${markerColor};"><strong>Status:</strong> ${blipAgeDays <= 30 ? 'RECENTLY ACTIVE' : 'HISTORICAL'}</p>
-        `;
-        circle.bindPopup(popupContent);
-        trapperMarkers.push(circle);
+            color: markerColor, fillColor: markerColor, fillOpacity: 0.5, radius: 152.4 // 500ft
+        });
+        circle.bindPopup(`<h3>Reported Trapping Zone</h3><p><strong>Last Reported:</strong> ${new Date(blip.report_timestamp).toLocaleString()}</p><p>${sanitizeHTML(blip.description || '')}</p>`);
+        layerGroups.trappers.addLayer(circle);
     });
 
-    // 2. Draw Lost Pet Pins (Secondary Layer)
-    if (petData && petData.length > 0) {
-        petData.forEach(pet => {
-            const marker = L.marker([pet.latitude, pet.longitude]).addTo(map);
-            const popupContent = `
-                <h3>Lost Pet: ${pet.pet_name}</h3>
-                <p><strong>Contact:</strong> ${pet.owner_contact_email}</p>
-            `;
-            marker.bindPopup(popupContent);
-            petMarkers.push(marker);
-        });
-    }
-}
+    // Draw Lost Pets
+    data.lost_pets?.forEach(pet => {
+        const marker = L.marker([pet.latitude, pet.longitude]);
+        marker.bindPopup(`<h3>Lost Pet: ${sanitizeHTML(pet.pet_name)}</h3><p><strong>Species/Breed:</strong> ${sanitizeHTML(pet.species_breed || 'N/A')}</p><p><strong>Description:</strong> ${sanitizeHTML(pet.description || 'N/A')}</p><p><strong>Contact:</strong> ${sanitizeHTML(pet.owner_contact_email)}</p>${pet.photo_url ? `<a href="${sanitizeHTML(pet.photo_url)}" target="_blank">View Photo</a>` : ''}`);
+        layerGroups.lost_pets.addLayer(marker);
+    });
 
-function showAdvancedFilter() {
-    // Logic to show the advanced filter modal
-    // On modal submission, call fetchMapData(startTime, endTime) with the user inputs.
-    alert('Advanced filter is not implemented yet.');
+    // Draw Found Pets
+    data.found_pets?.forEach(pet => {
+        const marker = L.marker([pet.latitude, pet.longitude], { icon: L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] }) });
+        marker.bindPopup(`<h3>Found Pet</h3><p><strong>Species/Breed:</strong> ${sanitizeHTML(pet.species_breed || 'N/A')}</p><p><strong>Description:</strong> ${sanitizeHTML(pet.description || 'N/A')}</p><p><strong>Contact Finder:</strong> ${sanitizeHTML(pet.contact_info)}</p>${pet.photo_url ? `<a href="${sanitizeHTML(pet.photo_url)}" target="_blank">View Photo</a>` : ''}`);
+        layerGroups.found_pets.addLayer(marker);
+    });
+
+    // Draw Dangerous Animals
+    data.dangerous_animals?.forEach(animal => {
+        const circle = L.circle([animal.latitude, animal.longitude], {
+            color: 'yellow', fillColor: 'yellow', fillOpacity: 0.6, radius: 50
+        });
+        circle.bindPopup(`<h3>Dangerous Animal Sighting</h3><p><strong>Type:</strong> ${sanitizeHTML(animal.animal_type)}</p><p><strong>Description:</strong> ${sanitizeHTML(animal.description || 'N/A')}</p><p><strong>Reported:</strong> ${new Date(animal.report_timestamp).toLocaleString()}</p>`);
+        layerGroups.dangerous_animals.addLayer(circle);
+    });
 }
 
 window.onload = initMap;
