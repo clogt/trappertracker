@@ -4,6 +4,10 @@ node_modules/
 # Wrangler files
 .wrangler/
 
+# Local development secrets
+# This file contains secrets for local development and should not be committed.
+.dev.vars
+
 # Miscellaneous
 New Text Document.txt
 assets/js/New Text Document.txt

@@ -1,5 +1,6 @@
 import { handleMapDataRequest, handleReportRequest } from "./functions/api/report/index.js";
 import { handleRegisterRequest, handleLoginRequest } from "./functions/api/auth/index.js";
+import { handleMatchRequest } from "./functions/api/match/index.js";
 
 function addSecurityHeaders(response) {
   const newResponse = new Response(response.body, response);
@@ -25,6 +26,8 @@ export default {
       response = await handleRegisterRequest(request, env);
     } else if (url.pathname.startsWith('/api/login')) {
       response = await handleLoginRequest(request, env);
+    } else if (url.pathname.startsWith('/api/match')) {
+      response = await handleMatchRequest(request, env);
     } else if (env.ASSETS) { // Serve static assets using ASSETS binding
       response = await env.ASSETS.fetch(request);
     } else {

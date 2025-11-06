@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const [lat, lng] = locationInput.value.split(',').map(s => parseFloat(s.trim()));
 
             if (isNaN(lat) || isNaN(lng)) {
-                alert('Please click on the map to set a location for the report.');
+                displayErrorMessage('Please click on the map to set a location for the report.');
                 return;
             }
 
@@ -190,16 +190,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    // ... success logic ...
+                    displaySuccessMessage('Report submitted successfully!');
+                    reportForm.reset(); // Clear the form
+                    renderFormDetails(reportType.value); // Re-render dynamic part
+                    locationInput.value = ''; // Clear location input
+                    window.fetchMapData(); // Refresh map data
                 } else {
                     const error = await response.json();
-                    displayErrorMessage(`Error submitting report: ${error.error}`); // Replaced alert
+                    displayErrorMessage(`Error submitting report: ${error.error}`);
                 }
             } catch (error) {
                 console.error('Error submitting report:', error);
-                displayErrorMessage('An unexpected error occurred. Please try again.'); // Replaced alert
+                displayErrorMessage('An unexpected error occurred. Please try again.');
                 }
         });
+    }
+
+    // Helper function to display success messages
+    const reportSuccessMessage = document.getElementById('report-success-message');
+    function displaySuccessMessage(message) {
+        if (reportSuccessMessage) {
+            reportSuccessMessage.textContent = message;
+            reportSuccessMessage.classList.remove('hidden');
+            setTimeout(() => {
+                reportSuccessMessage.classList.add('hidden');
+                reportSuccessMessage.textContent = '';
+            }, 5000); // Hide after 5 seconds
+        }
     }
 
     // --- Existing Logic to Keep ---
