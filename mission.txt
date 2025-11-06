@@ -1,0 +1,49 @@
+# TrapperTracker Project Mission and Scope
+
+## 1. Core Vision & Mission
+
+TrapperTracker is a real-time, map-based community safety application accessible on all devices. Its primary mission is to consolidate and clearly visualize "danger zones" where pet trappers are active, and to provide a centralized platform for reporting and viewing lost and found pets. It aims to replace the scattered, inefficient warnings on social media with an easy-to-use, reliable service for pet owners.
+
+## 2. Guiding Principles & Strategy
+
+*   **Cost-First Architecture:** The project is built and operated entirely within the **free tiers** of all chosen services to eliminate operational costs until the platform generates revenue.
+    *   **Hosting/Database:** Cloudflare Pages, Workers, and D1 (Free Tier).
+    *   **Maps:** Leaflet.js with OpenStreetMap tiles (Free).
+    *   **Image Hosting:** No direct uploads. Users will provide links to images hosted on external services (e.g., Imgur).
+*   **"Freemium" Monetization Strategy:**
+    *   **Core Product:** The public website (`trappertracker.com`) will be free to use.
+    *   **Phase 1 Revenue:** Donations (high priority) and non-intrusive advertising (medium priority).
+    *   **Phase 2 Revenue (Long-Term Goal):** A dedicated, paid mobile/desktop application for power users (e.g., social media group admins) with advanced management and automation features.
+*   **Open-Source & Community-Driven:** The project is public and open-source (MIT License) to foster trust, transparency, and community contributions.
+
+## 3. Feature Roadmap
+
+*   **Phase 0: Foundational Setup (Complete):**
+    *   Established the Master Project Plan (`GEMINI.md`).
+    *   Defined and fixed the database schema (`d1.sql`) for all report types.
+    *   Added the MIT License.
+    *   Implemented secure secret management.
+*   **Phase 1: MVP Implementation (Current Phase):**
+    *   **Backend:** Update the API to support `found_pets` and `dangerous_animals` report types.
+    *   **Frontend (Form):** Update the UI to allow submission of all new report types.
+    *   **Frontend (Map):** Update the map to display all new report types as toggleable layers with unique icons.
+    *   **Donation Feature:** Add a placeholder "Support Us" link to the UI.
+*   **Phase 2: Polish & Launch:**
+    *   Perform a full security review.
+    *   Refine the UI/UX and mobile experience.
+    *   Conduct full end-to-end testing.
+    *   Deploy to production and connect the custom domain.
+*   **Phase 3: Post-Launch / V2.0 Features:**
+    *   Develop an AI-powered engine to match `lost` and `found` pet reports.
+    *   Create a notification system for matched pets.
+    *   Design and develop the premium admin app.
+    *   Implement a solution for direct photo uploads.
+
+## 4. Development Process
+
+*   **Git Branching Strategy:** A standard branching model (`main`, `staging`, `dev`, `feature/*`, `hotfix/*`) is used to manage code.
+*   **Security ("Red Team" Mandate):** Security is a primary concern. All code will be reviewed for vulnerabilities, and automated tools will be used to monitor dependencies. No secrets will ever be committed to the repository.
+
+## 5. Future Expansion
+
+[This section is reserved for future updates and additional details regarding the project's evolution.]
