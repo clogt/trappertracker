@@ -115,6 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const data = await response.json();
                     if (data && data.length > 0) {
                         locationInput.value = `${data[0].lat}, ${data[0].lon}`;
+                        // Clear address fields after successful geocoding
+                        streetInput.value = '';
+                        cityInput.value = '';
+                        stateInput.value = '';
+                        zipInput.value = '';
                     } else {
                         alert('Address not found.');
                     }
