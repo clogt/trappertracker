@@ -6,6 +6,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportForm = document.getElementById('reportForm');
     const locationInput = document.getElementById('location');
     const themeToggle = document.getElementById('toggle-theme');
+    const reportErrorMessage = document.getElementById('report-error-message'); // New line
+
+    // Helper function to display error messages
+    function displayErrorMessage(message) {
+        if (reportErrorMessage) {
+            reportErrorMessage.textContent = message;
+            reportErrorMessage.classList.remove('hidden');
+            setTimeout(() => {
+                reportErrorMessage.classList.add('hidden');
+                reportErrorMessage.textContent = '';
+            }, 5000); // Hide after 5 seconds
+        }
+    }
 
     // Geocoding elements
     const geocodeButton = document.getElementById('geocode-button');
@@ -177,19 +190,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    reportForm.reset();
-                    renderFormDetails(reportType.value); // Re-render the form to clear dynamic sections
-                    if (window.fetchMapData) {
-                        window.fetchMapData(); // Refresh map data
-                    }
+                    // ... success logic ...
                 } else {
                     const error = await response.json();
-                    alert(`Error submitting report: ${error.error}`);
+                    displayErrorMessage(`Error submitting report: ${error.error}`); // Replaced alert
                 }
             } catch (error) {
                 console.error('Error submitting report:', error);
-                alert('An unexpected error occurred. Please try again.');
-            }
+                displayErrorMessage('An unexpected error occurred. Please try again.'); // Replaced alert
+                }
         });
     }
 
