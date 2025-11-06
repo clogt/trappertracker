@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dangerZone: `
             <div>
                 <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Description of Danger</label>
-                <textarea id="description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200" required></textarea>
+                <textarea id="description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200" placeholder="e.g., Red truck, man with net, seen near park" required></textarea>
             </div>
         `,
         lostPet: `
