@@ -177,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    alert('Report submitted successfully!');
                     reportForm.reset();
                     renderFormDetails(reportType.value); // Re-render the form to clear dynamic sections
                     if (window.fetchMapData) {
