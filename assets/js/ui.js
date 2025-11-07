@@ -327,5 +327,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             advancedFilterModal.classList.add('hidden');
         });
+    // --- Error Report Form Submission Logic ---
+    const errorReportForm = document.getElementById('errorReportForm');
+    if (errorReportForm) {
+        errorReportForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const errorDescription = document.getElementById('errorDescription').value;
+
+            if (!errorDescription.trim()) {
+                displayErrorMessage('Please provide a description for the error report.');
+                return;
+            }
+
+            console.log('Error Report Submitted:', errorDescription);
+            displaySuccessMessage('Error report submitted successfully! Thank you for your feedback.');
+            errorReportForm.reset();
+        });
     }
 });
