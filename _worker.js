@@ -8,7 +8,8 @@ function addSecurityHeaders(response) {
   newResponse.headers.set("X-Content-Type-Options", "nosniff");
   newResponse.headers.set("X-Frame-Options", "DENY");
   newResponse.headers.set("X-XSS-Protection", "1; mode=block");
-  // Consider adding Strict-Transport-Security, Content-Security-Policy, Referrer-Policy
+  newResponse.headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:;");
+  newResponse.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   return newResponse;
 }
 
