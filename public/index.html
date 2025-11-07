@@ -31,6 +31,10 @@
                     <a href="/dashboard.html" class="text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 py-2">Dashboard</a>
                     <a id="loginLink" href="/login.html" class="text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 py-2">Login</a>
                     <button id="logoutBtn" class="hidden text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-3 py-2">Logout</button>
+                    <div class="flex items-center px-3">
+                        <input type="checkbox" id="toggle-theme" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="toggle-theme" class="ml-2 block text-sm text-gray-600 dark:text-gray-200">Dark Mode</label>
+                    </div>
                     <a href="/donate.html" class="bg-green-500 text-white font-bold py-2 px-4 rounded-full hover:bg-green-600">♥ Support Us</a>
                     <a href="https://github.com/clogt/trappertracker" target="_blank" class="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white">GitHub</a>
                 </nav>
@@ -155,6 +159,29 @@
                 "'": '&#039;'
             };
             return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Dark mode toggle
+        const themeToggle = document.getElementById('toggle-theme');
+        const applyTheme = (isDark) => {
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        };
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        const isDarkMode = savedTheme === 'dark';
+        applyTheme(isDarkMode);
+        if (themeToggle) {
+            themeToggle.checked = isDarkMode;
+            themeToggle.addEventListener('change', (event) => {
+                const isDark = event.target.checked;
+                applyTheme(isDark);
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            });
         }
 
         // Logout functionality
