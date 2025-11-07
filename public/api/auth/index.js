@@ -1,6 +1,26 @@
 import * as bcrypt from "bcrypt-ts";
 import * as jose from 'jose';
 
+// --- Turnstile Verification ---
+async function verifyTurnstile(token, env) {
+    try {
+        const formData = new FormData();
+        formData.append('secret', env.TURNSTILE_SECRET_KEY);
+        formData.append('response', token);
+
+        const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        return data.success;
+    } catch (error) {
+        console.error('Turnstile verification error:', error);
+        return false;
+    }
+}
+
 // --- Simple In-Memory Rate Limiter ---
 const requestStore = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
@@ -72,7 +92,15 @@ export async function handleRegisterRequest(request, env) {
     }
 
     try {
-        const { email, password } = await request.json();
+        const { email, password, turnstileToken } = await request.json();
+
+        // Verify Turnstile token
+        if (!turnstileToken || !(await verifyTurnstile(turnstileToken, env))) {
+            return new Response(JSON.stringify({ error: 'CAPTCHA verification failed. Please try again.' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
         if (!email || !password || !passwordRegex.test(password)) {
@@ -129,7 +157,15 @@ export async function handleLoginRequest(request, env) {
     }
 
     try {
-        const { email, password } = await request.json();
+        const { email, password, turnstileToken } = await request.json();
+
+        // Verify Turnstile token
+        if (!turnstileToken || !(await verifyTurnstile(turnstileToken, env))) {
+            return new Response(JSON.stringify({ error: 'CAPTCHA verification failed. Please try again.' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
         if (!email || !password) {
             return new Response(JSON.stringify({ error: "Email and password are required" }), {

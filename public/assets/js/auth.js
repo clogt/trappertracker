@@ -74,6 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = document.getElementById('loginPassword').value;
             const loginButton = document.getElementById('loginButton');
 
+            // Get Turnstile token
+            const turnstileResponse = turnstile.getResponse(document.getElementById('login-turnstile'));
+            if (!turnstileResponse) {
+                displayAuthMessage('Please complete the CAPTCHA verification.');
+                return;
+            }
+
             loginButton.disabled = true;
             loginButton.textContent = 'Logging in...';
 
@@ -81,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email, password, turnstileToken: turnstileResponse })
                 });
 
                 if (response.ok) {
@@ -130,6 +137,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Get Turnstile token
+            const turnstileResponse = turnstile.getResponse(document.getElementById('register-turnstile'));
+            if (!turnstileResponse) {
+                displayAuthMessage('Please complete the CAPTCHA verification.');
+                return;
+            }
+
             registerButton.disabled = true;
             registerButton.textContent = 'Registering...';
 
@@ -137,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email, password, turnstileToken: turnstileResponse })
                 });
 
                 if (response.ok) {
