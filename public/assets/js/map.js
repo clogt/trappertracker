@@ -166,12 +166,12 @@ function setupQuickSearch() {
         if (existingDropdown) return existingDropdown;
 
         const dropdown = document.createElement('div');
-        dropdown.className = 'quick-search-dropdown hidden absolute z-50 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto';
+        dropdown.className = 'quick-search-dropdown hidden absolute bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto';
         dropdown.style.position = 'absolute';
-        dropdown.style.top = '100%';
+        dropdown.style.top = 'calc(100% + 4px)';
         dropdown.style.left = '0';
-        dropdown.style.right = '0';
-        dropdown.style.marginTop = '4px';
+        dropdown.style.width = '100%';
+        dropdown.style.zIndex = '9999';
         inputElement.parentElement.style.position = 'relative';
         inputElement.parentElement.appendChild(dropdown);
         return dropdown;
@@ -186,6 +186,10 @@ function setupQuickSearch() {
         }
 
         clearTimeout(autocompleteTimeout);
+
+        // Show loading state immediately
+        dropdown.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">Loading...</div>';
+        dropdown.classList.remove('hidden');
 
         autocompleteTimeout = setTimeout(async () => {
             // Respect rate limiting
@@ -218,7 +222,7 @@ function setupQuickSearch() {
                     dropdown.innerHTML = '';
                     data.forEach(place => {
                         const item = document.createElement('div');
-                        item.className = 'px-4 py-2 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 text-gray-900 dark:text-gray-100 text-sm';
+                        item.className = 'px-4 py-2 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 text-gray-900 dark:text-gray-100 text-sm border-b border-gray-100 dark:border-gray-700 last:border-b-0';
                         item.textContent = place.display_name;
                         item.addEventListener('click', () => {
                             const lat = parseFloat(place.lat);
@@ -235,6 +239,7 @@ function setupQuickSearch() {
                                 map.setView([lat, lng], zoomLevel);
                             }
 
+                            // Clear the dropdown
                             dropdown.classList.add('hidden');
                             dropdown.innerHTML = '';
                         });
@@ -242,8 +247,8 @@ function setupQuickSearch() {
                     });
                     dropdown.classList.remove('hidden');
                 } else {
-                    dropdown.classList.add('hidden');
-                    dropdown.innerHTML = '';
+                    dropdown.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No results found</div>';
+                    dropdown.classList.remove('hidden');
                 }
             } catch (error) {
                 console.error('Autocomplete error:', error);
