@@ -8,6 +8,78 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('toggle-theme');
     const reportErrorMessage = document.getElementById('report-error-message'); // New line
 
+    // Check user role and show dangerous animals filter for enforcement users
+    const userRole = localStorage.getItem('userRole');
+    const dangerousAnimalsToggle = document.getElementById('dangerous-animals-toggle');
+    if (dangerousAnimalsToggle && (userRole === 'enforcement' || userRole === 'admin')) {
+        dangerousAnimalsToggle.classList.remove('hidden');
+    }
+
+    // Check if user is logged in and toggle logout/login buttons
+    const logoutBtn = document.getElementById('logoutBtn');
+    const logoutBtnMobile = document.getElementById('logoutBtnMobile');
+    const loginLink = document.getElementById('loginLink');
+    const loginLinkMobile = document.getElementById('loginLinkMobile');
+
+    if (userRole) {
+        // User is logged in - show logout buttons, hide login links
+        if (logoutBtn) logoutBtn.classList.remove('hidden');
+        if (logoutBtnMobile) logoutBtnMobile.classList.remove('hidden');
+        if (loginLink) loginLink.classList.add('hidden');
+        if (loginLinkMobile) loginLinkMobile.classList.add('hidden');
+    }
+
+    // Logout functionality
+    function handleLogout() {
+        // Clear localStorage
+        localStorage.removeItem('userRole');
+        // Clear cookies
+        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        // Redirect to home
+        window.location.href = '/';
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+    if (logoutBtnMobile) {
+        logoutBtnMobile.addEventListener('click', handleLogout);
+    }
+
+    // Mobile menu toggle
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    if (mobileMenuBtn && mobileMenu) {
+        // Toggle menu on button click
+        mobileMenuBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isShowing = mobileMenu.classList.contains('show');
+            if (isShowing) {
+                mobileMenu.classList.remove('show');
+            } else {
+                mobileMenu.classList.add('show');
+            }
+        });
+
+        // Close menu when clicking menu links
+        const menuLinks = mobileMenu.querySelectorAll('a');
+        menuLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.remove('show');
+            });
+        });
+
+        // Close menu on window resize to desktop size
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) { // md breakpoint
+                mobileMenu.classList.remove('show');
+            }
+        });
+    }
+
     // Helper function to display error messages
     function displayErrorMessage(message) {
         if (reportErrorMessage) {
@@ -26,6 +98,144 @@ document.addEventListener('DOMContentLoaded', () => {
     const stateInput = document.getElementById('state');
     const zipInput = document.getElementById('zip');
     const streetInput = document.getElementById('street');
+
+    // Address autocomplete functionality
+    let autocompleteTimeout;
+    let lastAutocompleteRequest = 0;
+    const AUTOCOMPLETE_DEBOUNCE = 300; // ms
+    const NOMINATIM_RATE_LIMIT = 1000; // 1 req/sec
+
+    // Create autocomplete dropdown containers
+    function createAutocompleteDropdown(inputElement) {
+        const existingDropdown = inputElement.parentElement.querySelector('.autocomplete-dropdown');
+        if (existingDropdown) return existingDropdown;
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'autocomplete-dropdown hidden absolute z-50 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto w-full';
+        dropdown.style.position = 'absolute';
+        dropdown.style.top = '100%';
+        dropdown.style.left = '0';
+        dropdown.style.right = '0';
+        inputElement.parentElement.style.position = 'relative';
+        inputElement.parentElement.appendChild(dropdown);
+        return dropdown;
+    }
+
+    // Debounced autocomplete search
+    async function searchAddress(query, inputElement, dropdown) {
+        if (!query || query.length < 3) {
+            dropdown.classList.add('hidden');
+            dropdown.innerHTML = '';
+            return;
+        }
+
+        clearTimeout(autocompleteTimeout);
+
+        autocompleteTimeout = setTimeout(async () => {
+            // Respect rate limiting
+            const now = Date.now();
+            const timeSinceLastRequest = now - lastAutocompleteRequest;
+            if (timeSinceLastRequest < NOMINATIM_RATE_LIMIT) {
+                await new Promise(resolve => setTimeout(resolve, NOMINATIM_RATE_LIMIT - timeSinceLastRequest));
+            }
+            lastAutocompleteRequest = Date.now();
+
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?` +
+                    `q=${encodeURIComponent(query)}&` +
+                    `format=json&` +
+                    `limit=5&` +
+                    `countrycodes=us&` +
+                    `addressdetails=1`,
+                    {
+                        headers: {
+                            'User-Agent': 'TrapperTracker/1.0'
+                        }
+                    }
+                );
+
+                if (!response.ok) throw new Error('Autocomplete unavailable');
+
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    dropdown.innerHTML = '';
+                    data.forEach(place => {
+                        const item = document.createElement('div');
+                        item.className = 'px-4 py-2 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 text-gray-900 dark:text-gray-100 text-sm';
+                        item.textContent = place.display_name;
+                        item.addEventListener('click', () => {
+                            // Parse address components
+                            const addr = place.address;
+                            if (addr) {
+                                if (streetInput && (addr.road || addr.house_number)) {
+                                    const street = [addr.house_number, addr.road].filter(Boolean).join(' ');
+                                    streetInput.value = street;
+                                }
+                                if (cityInput && addr.city) cityInput.value = addr.city;
+                                if (cityInput && !addr.city && addr.town) cityInput.value = addr.town;
+                                if (cityInput && !addr.city && !addr.town && addr.village) cityInput.value = addr.village;
+                                if (stateInput && addr.state) stateInput.value = addr.state;
+                                if (zipInput && addr.postcode) zipInput.value = addr.postcode;
+
+                                // Also set coordinates
+                                if (locationInput) {
+                                    locationInput.value = `${place.lat}, ${place.lon}`;
+                                    if (window.updateMapMarker) {
+                                        window.updateMapMarker(parseFloat(place.lat), parseFloat(place.lon));
+                                    }
+                                }
+                            }
+                            dropdown.classList.add('hidden');
+                            dropdown.innerHTML = '';
+                        });
+                        dropdown.appendChild(item);
+                    });
+                    dropdown.classList.remove('hidden');
+                } else {
+                    dropdown.classList.add('hidden');
+                    dropdown.innerHTML = '';
+                }
+            } catch (error) {
+                console.error('Autocomplete error:', error);
+                dropdown.classList.add('hidden');
+                dropdown.innerHTML = '';
+            }
+        }, AUTOCOMPLETE_DEBOUNCE);
+    }
+
+    // Setup autocomplete for street input
+    if (streetInput) {
+        const streetDropdown = createAutocompleteDropdown(streetInput);
+        streetInput.addEventListener('input', (e) => {
+            const query = `${e.target.value} ${cityInput?.value || ''} ${stateInput?.value || ''}`.trim();
+            searchAddress(query, streetInput, streetDropdown);
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!streetInput.contains(e.target) && !streetDropdown.contains(e.target)) {
+                streetDropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    // Setup autocomplete for city input
+    if (cityInput) {
+        const cityDropdown = createAutocompleteDropdown(cityInput);
+        cityInput.addEventListener('input', (e) => {
+            const query = `${e.target.value} ${stateInput?.value || ''}`.trim();
+            searchAddress(query, cityInput, cityDropdown);
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!cityInput.contains(e.target) && !cityDropdown.contains(e.target)) {
+                cityDropdown.classList.add('hidden');
+            }
+        });
+    }
 
     // --- Dynamic Form Templates ---
     const formTemplates = {
@@ -108,6 +318,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Handle report type tabs
+    const reportTabs = document.querySelectorAll('.report-tab');
+    reportTabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Remove active class from all tabs
+            reportTabs.forEach(t => t.classList.remove('active'));
+            // Add active class to clicked tab
+            this.classList.add('active');
+            // Update hidden input value
+            const reportTypeValue = this.getAttribute('data-report-type');
+            if (reportType) {
+                reportType.value = reportTypeValue;
+                renderFormDetails(reportTypeValue);
+
+                // Reset submit button when switching tabs
+                const submitButton = reportForm?.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit Report';
+                }
+            }
+        });
+    });
+
+    // Handle dropdown change (legacy support if dropdown is still used)
     if (reportType) {
         reportType.addEventListener('change', (event) => {
             renderFormDetails(event.target.value);
@@ -122,28 +358,64 @@ document.addEventListener('DOMContentLoaded', () => {
             const city = cityInput.value;
             const state = stateInput.value;
             const zip = zipInput.value;
-            const address = `${street}, ${city}, ${state} ${zip}`.trim();
 
-            if (address) {
+            // Build address string (prioritize zip for better accuracy)
+            let address = '';
+            if (zip) {
+                address = zip; // Start with zip for most accurate results
+                if (city || state) {
+                    address = `${street ? street + ', ' : ''}${city ? city + ', ' : ''}${state ? state + ' ' : ''}${zip}`;
+                }
+            } else if (city && state) {
+                address = `${street ? street + ', ' : ''}${city}, ${state}`;
+            } else {
+                displayErrorMessage('Please enter at least City and State, or a Zip Code.');
+                return;
+            }
+
+            if (address.trim()) {
+                geocodeButton.disabled = true;
+                geocodeButton.textContent = '🔄 Finding location...';
+
                 try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+                    // Add delay to respect Nominatim rate limits (1 req/sec)
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/search?` +
+                        `q=${encodeURIComponent(address)}&` +
+                        `format=json&` +
+                        `limit=1&` +
+                        `countrycodes=us`, // Limit to US for better accuracy
+                        {
+                            headers: {
+                                'User-Agent': 'TrapperTracker/1.0'
+                            }
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error('Geocoding service unavailable');
+                    }
+
                     const data = await response.json();
                     if (data && data.length > 0) {
                         locationInput.value = `${data[0].lat}, ${data[0].lon}`;
-                        // Clear address fields after successful geocoding
-                        streetInput.value = '';
-                        cityInput.value = '';
-                        stateInput.value = '';
-                        zipInput.value = '';
+                        // Update map marker if available
+                        if (window.updateMapMarker) {
+                            window.updateMapMarker(parseFloat(data[0].lat), parseFloat(data[0].lon));
+                        }
+                        displayErrorMessage('✓ Location found!');
                     } else {
-                        displayErrorMessage('Address not found.'); // Replaced alert
+                        displayErrorMessage('Address not found. Try entering just City, State, Zip or click on the map.');
                     }
                 } catch (error) {
                     console.error('Error geocoding address:', error);
-                    displayErrorMessage('Error geocoding address. Please try again.'); // Replaced alert
+                    displayErrorMessage('Geocoding failed. Please click on the map instead or try again in a moment.');
+                } finally {
+                    geocodeButton.disabled = false;
+                    geocodeButton.textContent = '🌍 Find Location from Address';
                 }
-            } else {
-                displayErrorMessage('Please enter at least a City, State, or Zip Code.'); // Replaced alert
             }
         });
     }
@@ -153,11 +425,21 @@ document.addEventListener('DOMContentLoaded', () => {
         reportForm.addEventListener('submit', async (event) => {
             event.preventDefault();
 
+            const submitButton = reportForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Submitting...';
+            }
+
             const type = reportType.value;
             const [lat, lng] = locationInput.value.split(',').map(s => parseFloat(s.trim()));
 
             if (isNaN(lat) || isNaN(lng)) {
                 displayErrorMessage('Please click on the map to set a location for the report.');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit Report';
+                }
                 return;
             }
 
@@ -202,7 +484,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (imageUrl) {
                         reportData.photo_url = imageUrl;
                     } else {
-                        // If upload failed, prevent report submission or handle as needed
+                        // If upload failed, reset button and prevent submission
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                            submitButton.textContent = 'Submit Report';
+                        }
                         return;
                     }
                 } else {
@@ -231,19 +517,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    displaySuccessMessage('Report submitted successfully!');
+                    displaySuccessMessage('✓ Report submitted successfully!');
                     reportForm.reset(); // Clear the form
                     renderFormDetails(reportType.value); // Re-render dynamic part
                     locationInput.value = ''; // Clear location input
-                    window.fetchMapData(); // Refresh map data
+                    if (window.fetchMapData) {
+                        window.fetchMapData(); // Refresh map data
+                    }
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Submit Report';
+                    }
+                } else if (response.status === 401) {
+                    displayErrorMessage('You must be logged in to submit reports. Please login first.');
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
                 } else {
-                    const error = await response.json();
-                    displayErrorMessage(`Error submitting report: ${error.error}`);
+                    let errorMessage = 'Error submitting report';
+                    try {
+                        const error = await response.json();
+                        errorMessage = error.error || error.message || errorMessage;
+                    } catch {
+                        errorMessage = await response.text() || errorMessage;
+                    }
+                    displayErrorMessage(errorMessage);
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Submit Report';
+                    }
                 }
             } catch (error) {
                 console.error('Error submitting report:', error);
-                displayErrorMessage('An unexpected error occurred. Please try again.');
+                displayErrorMessage('Network error. Please try again.');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit Report';
                 }
+            }
         });
     }
 
@@ -264,16 +575,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Theme toggle logic
     const applyTheme = (isDark) => {
-        document.documentElement.classList.toggle('dark', isDark);
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
     };
 
+    // Default to light mode if no preference saved
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        applyTheme(true);
-        if (themeToggle) themeToggle.checked = true;
-    } else {
-        applyTheme(false);
-        if (themeToggle) themeToggle.checked = false;
+    const isDarkMode = savedTheme === 'dark';
+
+    applyTheme(isDarkMode);
+    if (themeToggle) {
+        themeToggle.checked = isDarkMode;
     }
 
     if (themeToggle) {
@@ -281,6 +596,58 @@ document.addEventListener('DOMContentLoaded', () => {
             const isDark = event.target.checked;
             applyTheme(isDark);
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+    }
+
+    // Error Report Form Logic
+    const errorReportForm = document.getElementById('errorReportForm');
+    if (errorReportForm) {
+        errorReportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const descriptionInput = document.getElementById('errorDescription');
+            const description = descriptionInput.value.trim();
+
+            if (!description) {
+                displayErrorMessage('Please enter your feedback.');
+                return;
+            }
+
+            const submitButton = errorReportForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Submitting...';
+            }
+
+            try {
+                const response = await fetch('/api/error-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        description: description,
+                        user_agent: navigator.userAgent,
+                        page_url: window.location.href
+                    })
+                });
+
+                if (response.ok) {
+                    displaySuccessMessage('✓ Thank you! Your feedback has been submitted.');
+                    descriptionInput.value = '';
+                } else {
+                    const errorData = await response.json();
+                    displayErrorMessage(errorData.error || 'Failed to submit feedback. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+                displayErrorMessage('Network error. Please try again.');
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit Feedback';
+                }
+            }
         });
     }
 

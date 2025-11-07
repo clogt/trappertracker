@@ -45,10 +45,11 @@
             <h1 class="text-3xl font-bold text-gray-800 dark:text-white">TrapperTracker</h1>
             <nav>
                 <a href="/" class="text-gray-600 hover:text-gray-800 px-3 py-2">Map</a>
-                <a href="#report-form" class="text-gray-600 hover:text-gray-800 px-3 py-2">Submit a Report</a>
-                <a href="/login.html" class="text-gray-600 hover:text-gray-800 px-3 py-2">Login/Register</a>
+                <a href="/#report-form" class="text-gray-600 hover:text-gray-800 px-3 py-2">Submit a Report</a>
+                <a id="loginLinkDonate" href="/login.html" class="text-gray-600 hover:text-gray-800 px-3 py-2">Login/Register</a>
+                <button id="logoutBtnDonate" class="hidden text-red-600 hover:text-red-700 px-3 py-2">Logout</button>
                 <a href="/donate.html" id="donation-link" class="bg-green-500 text-white font-bold py-2 px-4 rounded-full hover:bg-green-600">♥ Support Us</a>
-                <a href="https://github.com/sponsors/yourusername" target="_blank" class="text-gray-600 hover:text-gray-800 px-3 py-2">GitHub Sponsors</a>
+                <a href="https://github.com/sponsors/clogt" target="_blank" class="text-gray-600 hover:text-gray-800 px-3 py-2">GitHub Sponsors</a>
             </nav>
         </div>
     </header>
@@ -102,5 +103,33 @@
             &copy; 2025 TrapperTracker. All rights reserved.
         </div>
     </footer>
+
+    <script>
+        // Check if user is logged in and toggle logout/login buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const userRole = localStorage.getItem('userRole');
+            const logoutBtn = document.getElementById('logoutBtnDonate');
+            const loginLink = document.getElementById('loginLinkDonate');
+
+            if (userRole) {
+                // User is logged in - show logout button, hide login link
+                if (logoutBtn) logoutBtn.classList.remove('hidden');
+                if (loginLink) loginLink.classList.add('hidden');
+            }
+
+            // Logout functionality
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    // Clear localStorage
+                    localStorage.removeItem('userRole');
+                    // Clear cookies
+                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    // Redirect to home
+                    window.location.href = '/';
+                });
+            }
+        });
+    </script>
 </body>
 </html>

@@ -120,4 +120,250 @@ function drawMapData(data) {
     });
 }
 
-window.onload = initMap;
+// Function to update map marker and zoom to location
+window.updateMapMarker = function(lat, lng, zoom = 15) {
+    if (map) {
+        // Zoom and center the map to the new location
+        map.setView([lat, lng], zoom);
+
+        // Optionally add a temporary marker to show the selected location
+        // Remove any existing temporary marker
+        if (window.tempMarker) {
+            map.removeLayer(window.tempMarker);
+        }
+
+        // Add new temporary marker
+        window.tempMarker = L.marker([lat, lng], {
+            icon: L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            })
+        }).addTo(map);
+
+        window.tempMarker.bindPopup('<strong>Selected Location</strong><br>Click Submit Report to save').openPopup();
+    }
+};
+
+// Quick location search functionality
+function setupQuickSearch() {
+    const quickSearchInput = document.getElementById('quick-search');
+    const quickSearchBtn = document.getElementById('quick-search-btn');
+    const quickSearchMobileInput = document.getElementById('quick-search-mobile');
+    const quickSearchMobileBtn = document.getElementById('quick-search-mobile-btn');
+
+    let autocompleteTimeout;
+    let lastAutocompleteRequest = 0;
+    const AUTOCOMPLETE_DEBOUNCE = 300; // ms
+    const NOMINATIM_RATE_LIMIT = 1000; // 1 req/sec
+
+    // Create autocomplete dropdown
+    function createAutocompleteDropdown(inputElement) {
+        const existingDropdown = inputElement.parentElement.querySelector('.quick-search-dropdown');
+        if (existingDropdown) return existingDropdown;
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'quick-search-dropdown hidden absolute z-50 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto';
+        dropdown.style.position = 'absolute';
+        dropdown.style.top = '100%';
+        dropdown.style.left = '0';
+        dropdown.style.right = '0';
+        dropdown.style.marginTop = '4px';
+        inputElement.parentElement.style.position = 'relative';
+        inputElement.parentElement.appendChild(dropdown);
+        return dropdown;
+    }
+
+    // Debounced autocomplete search
+    async function searchAutocomplete(query, dropdown) {
+        if (!query || query.length < 2) {
+            dropdown.classList.add('hidden');
+            dropdown.innerHTML = '';
+            return;
+        }
+
+        clearTimeout(autocompleteTimeout);
+
+        autocompleteTimeout = setTimeout(async () => {
+            // Respect rate limiting
+            const now = Date.now();
+            const timeSinceLastRequest = now - lastAutocompleteRequest;
+            if (timeSinceLastRequest < NOMINATIM_RATE_LIMIT) {
+                await new Promise(resolve => setTimeout(resolve, NOMINATIM_RATE_LIMIT - timeSinceLastRequest));
+            }
+            lastAutocompleteRequest = Date.now();
+
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?` +
+                    `q=${encodeURIComponent(query)}&` +
+                    `format=json&` +
+                    `limit=5&` +
+                    `countrycodes=us`,
+                    {
+                        headers: {
+                            'User-Agent': 'TrapperTracker/1.0'
+                        }
+                    }
+                );
+
+                if (!response.ok) throw new Error('Autocomplete unavailable');
+
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    dropdown.innerHTML = '';
+                    data.forEach(place => {
+                        const item = document.createElement('div');
+                        item.className = 'px-4 py-2 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 text-gray-900 dark:text-gray-100 text-sm';
+                        item.textContent = place.display_name;
+                        item.addEventListener('click', () => {
+                            const lat = parseFloat(place.lat);
+                            const lng = parseFloat(place.lon);
+
+                            // Determine zoom level
+                            let zoomLevel = 12;
+                            if (place.type === 'postcode' || /^\d{5}$/.test(query.trim())) {
+                                zoomLevel = 13;
+                            }
+
+                            // Zoom map to location
+                            if (map) {
+                                map.setView([lat, lng], zoomLevel);
+                            }
+
+                            dropdown.classList.add('hidden');
+                            dropdown.innerHTML = '';
+                        });
+                        dropdown.appendChild(item);
+                    });
+                    dropdown.classList.remove('hidden');
+                } else {
+                    dropdown.classList.add('hidden');
+                    dropdown.innerHTML = '';
+                }
+            } catch (error) {
+                console.error('Autocomplete error:', error);
+                dropdown.classList.add('hidden');
+                dropdown.innerHTML = '';
+            }
+        }, AUTOCOMPLETE_DEBOUNCE);
+    }
+
+    async function performSearch(query) {
+        if (!query || query.trim().length < 2) {
+            alert('Please enter a city name or zip code');
+            return;
+        }
+
+        try {
+            // Add delay to respect Nominatim rate limits
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?` +
+                `q=${encodeURIComponent(query)}&` +
+                `format=json&` +
+                `limit=1&` +
+                `countrycodes=us`,
+                {
+                    headers: {
+                        'User-Agent': 'TrapperTracker/1.0'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Search service unavailable');
+            }
+
+            const data = await response.json();
+            if (data && data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lng = parseFloat(data[0].lon);
+
+                // Determine zoom level based on search type
+                let zoomLevel = 12; // Default for cities
+
+                // If it's a zip code (5 digits), zoom closer
+                if (/^\d{5}$/.test(query.trim())) {
+                    zoomLevel = 13;
+                }
+
+                // Zoom map to location
+                if (map) {
+                    map.setView([lat, lng], zoomLevel);
+                }
+            } else {
+                alert('Location not found. Try a different city or zip code.');
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            alert('Search failed. Please try again.');
+        }
+    }
+
+    // Desktop search with autocomplete
+    if (quickSearchBtn && quickSearchInput) {
+        const desktopDropdown = createAutocompleteDropdown(quickSearchInput);
+
+        quickSearchInput.addEventListener('input', (e) => {
+            searchAutocomplete(e.target.value, desktopDropdown);
+        });
+
+        quickSearchBtn.addEventListener('click', () => {
+            performSearch(quickSearchInput.value);
+            desktopDropdown.classList.add('hidden');
+        });
+
+        quickSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performSearch(quickSearchInput.value);
+                desktopDropdown.classList.add('hidden');
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!quickSearchInput.contains(e.target) && !desktopDropdown.contains(e.target)) {
+                desktopDropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    // Mobile search with autocomplete
+    if (quickSearchMobileBtn && quickSearchMobileInput) {
+        const mobileDropdown = createAutocompleteDropdown(quickSearchMobileInput);
+
+        quickSearchMobileInput.addEventListener('input', (e) => {
+            searchAutocomplete(e.target.value, mobileDropdown);
+        });
+
+        quickSearchMobileBtn.addEventListener('click', () => {
+            performSearch(quickSearchMobileInput.value);
+            mobileDropdown.classList.add('hidden');
+        });
+
+        quickSearchMobileInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performSearch(quickSearchMobileInput.value);
+                mobileDropdown.classList.add('hidden');
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!quickSearchMobileInput.contains(e.target) && !mobileDropdown.contains(e.target)) {
+                mobileDropdown.classList.add('hidden');
+            }
+        });
+    }
+}
+
+window.onload = () => {
+    initMap();
+    setupQuickSearch();
+};
