@@ -6,7 +6,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const showRegisterLink = document.getElementById('showRegister');
     const showLoginLink = document.getElementById('showLogin');
     const registerSection = document.getElementById('registerSection');
-    const authMessage = document.getElementById('auth-message'); // New line
+    const authMessage = document.getElementById('auth-message');
+    const themeToggle = document.getElementById('toggle-theme-login');
+
+    // Theme toggle for login page
+    const applyTheme = (isDark) => {
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    };
+
+    const savedTheme = localStorage.getItem('theme');
+    const isDarkMode = savedTheme === 'dark';
+    applyTheme(isDarkMode);
+    if (themeToggle) {
+        themeToggle.checked = isDarkMode;
+        themeToggle.addEventListener('change', (event) => {
+            const isDark = event.target.checked;
+            applyTheme(isDark);
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+    }
 
     // Helper function to display auth messages
     function displayAuthMessage(message, isError = true) {
@@ -50,6 +72,10 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
+            const loginButton = document.getElementById('loginButton');
+
+            loginButton.disabled = true;
+            loginButton.textContent = 'Logging in...';
 
             try {
                 const response = await fetch('/api/login', {
@@ -59,16 +85,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    displayAuthMessage('Login successful!', false); // Replaced alert
-                    // Redirect or update UI
-                    window.location.href = '/'; // Redirect to home page
+                    const data = await response.json();
+                    // Store user role in localStorage
+                    if (data.role) {
+                        localStorage.setItem('userRole', data.role);
+                    }
+                    displayAuthMessage('✓ Login successful!', false);
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
                 } else {
-                    const errorData = await response.json();
-                    displayAuthMessage(`Login failed: ${errorData.error || response.statusText}`); // Replaced alert
+                    let errorMessage = 'Login failed';
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorData.message || errorMessage;
+                    } catch {
+                        errorMessage = await response.text() || response.statusText;
+                    }
+                    displayAuthMessage(errorMessage);
+                    loginButton.disabled = false;
+                    loginButton.textContent = 'Login';
                 }
             } catch (error) {
                 console.error('Error during login:', error);
-                displayAuthMessage('An unexpected error occurred during login.'); // Replaced alert
+                displayAuthMessage('Network error. Please try again.');
+                loginButton.disabled = false;
+                loginButton.textContent = 'Login';
             }
         });
     }
@@ -79,6 +121,17 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
+            const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+            const registerButton = document.getElementById('registerButton');
+
+            // Check if passwords match
+            if (password !== passwordConfirm) {
+                displayAuthMessage('Passwords do not match!');
+                return;
+            }
+
+            registerButton.disabled = true;
+            registerButton.textContent = 'Registering...';
 
             try {
                 const response = await fetch('/api/register', {
@@ -88,17 +141,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    displayAuthMessage('Registration successful! You can now log in.', false); // Replaced alert
-                    // Optionally switch to login form
-                    loginForm.closest('.bg-white').classList.remove('hidden');
-                    registerSection.classList.add('hidden');
+                    displayAuthMessage('✓ Registration successful! You can now log in.', false);
+                    setTimeout(() => {
+                        loginForm.closest('.bg-white').classList.remove('hidden');
+                        registerSection.classList.add('hidden');
+                        registerButton.disabled = false;
+                        registerButton.textContent = 'Register';
+                    }, 2000);
                 } else {
-                    const errorData = await response.json();
-                    displayAuthMessage(`Registration failed: ${errorData.error || response.statusText}`); // Replaced alert
+                    let errorMessage = 'Registration failed';
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorData.message || errorMessage;
+                    } catch {
+                        errorMessage = await response.text() || response.statusText;
+                    }
+                    displayAuthMessage(errorMessage);
+                    registerButton.disabled = false;
+                    registerButton.textContent = 'Register';
                 }
             } catch (error) {
                 console.error('Error during registration:', error);
-                displayAuthMessage('An unexpected error occurred during registration.'); // Replaced alert
+                displayAuthMessage('Network error. Please try again.');
+                registerButton.disabled = false;
+                registerButton.textContent = 'Register';
             }
         });
     }
