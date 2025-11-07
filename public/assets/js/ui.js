@@ -517,7 +517,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    displaySuccessMessage('✓ Report submitted successfully!');
+                    const result = await response.json();
+                    const reportId = result.report_id;
+
+                    // Generate shareable link
+                    const shareUrl = `${window.location.origin}/advanced.html?lat=${reportData.latitude}&lng=${reportData.longitude}&zoom=15&report=${reportId}`;
+
+                    displaySuccessWithShare('✓ Report submitted successfully!', shareUrl, reportData.report_type);
+
                     reportForm.reset(); // Clear the form
                     renderFormDetails(reportType.value); // Re-render dynamic part
                     locationInput.value = ''; // Clear location input
@@ -568,6 +575,61 @@ document.addEventListener('DOMContentLoaded', () => {
                 reportSuccessMessage.classList.add('hidden');
                 reportSuccessMessage.textContent = '';
             }, 5000); // Hide after 5 seconds
+        }
+    }
+
+    // Helper function to display success with social share buttons
+    function displaySuccessWithShare(message, shareUrl, reportType) {
+        if (reportSuccessMessage) {
+            const encodedUrl = encodeURIComponent(shareUrl);
+            const reportTypeText = reportType === 'Lost Pet' ? 'Lost Pet Alert' :
+                                    reportType === 'Found Pet' ? 'Found Pet Alert' :
+                                    reportType === 'Danger Zone' ? 'Pet Danger Zone Alert' :
+                                    reportType === 'Dangerous Animal' ? 'Dangerous Animal Alert' : 'Pet Safety Alert';
+
+            const shareText = encodeURIComponent(`${reportTypeText} - See the location on TrapperTracker`);
+
+            reportSuccessMessage.innerHTML = `
+                <div class="space-y-3">
+                    <p class="font-semibold">${message}</p>
+                    <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">Share this report with your community:</p>
+                        <div class="flex gap-2 mb-2">
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}"
+                               target="_blank"
+                               class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded inline-flex items-center justify-center">
+                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                </svg>
+                                Share on Facebook
+                            </a>
+                            <a href="https://nextdoor.com/share/?url=${encodedUrl}"
+                               target="_blank"
+                               class="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded inline-flex items-center justify-center">
+                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm6.5 13.5h-2c-.276 0-.5-.224-.5-.5s.224-.5.5-.5h2c.276 0 .5.224.5.5s-.224.5-.5.5zm-13-3c0-3.033 2.467-5.5 5.5-5.5s5.5 2.467 5.5 5.5-2.467 5.5-5.5 5.5-5.5-2.467-5.5-5.5z"/>
+                                </svg>
+                                Share on Nextdoor
+                            </a>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" value="${shareUrl}" readonly
+                                   class="flex-1 px-2 py-1 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded"
+                                   onclick="this.select()">
+                            <button onclick="navigator.clipboard.writeText('${shareUrl.replace(/'/g, "\\'")}'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy Link', 2000)"
+                                    class="text-xs bg-gray-600 hover:bg-gray-700 text-white py-1 px-3 rounded whitespace-nowrap">
+                                Copy Link
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            reportSuccessMessage.classList.remove('hidden');
+
+            setTimeout(() => {
+                reportSuccessMessage.classList.add('hidden');
+                reportSuccessMessage.innerHTML = '';
+            }, 15000); // Hide after 15 seconds
         }
     }
 
