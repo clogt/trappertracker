@@ -1,12 +1,16 @@
 // assets/js/auth.js
 
-document.addEventListener('DOMContentLoaded', () => {
+// Wait for both DOM and Turnstile to be ready
+function initAuth() {
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
     const showRegisterLink = document.getElementById('showRegister');
     const showLoginLink = document.getElementById('showLogin');
     const registerSection = document.getElementById('registerSection');
     const authMessage = document.getElementById('auth-message');
+
+    console.log('Auth.js initialized');
+    console.log('Turnstile available:', typeof turnstile !== 'undefined');
 
     // Helper function to display auth messages
     function displayAuthMessage(message, isError = true) {
@@ -192,4 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-});
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', initAuth);
