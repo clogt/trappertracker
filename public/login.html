@@ -70,6 +70,30 @@
         </div>
     </div>
 
-    <script src="assets/js/auth.js?v=3"></script>
+    <script>
+        // Explicitly render Turnstile widgets when ready
+        window.onloadTurnstileCallback = function () {
+            console.log('Turnstile loaded, rendering widgets');
+            if (typeof turnstile !== 'undefined') {
+                const loginWidget = document.getElementById('login-turnstile');
+                const registerWidget = document.getElementById('register-turnstile');
+
+                if (loginWidget && !loginWidget.hasChildNodes()) {
+                    turnstile.render('#login-turnstile', {
+                        sitekey: '0x4AAAAAAB_w9INZSbixJ5Nk',
+                        theme: 'auto'
+                    });
+                }
+
+                if (registerWidget && !registerWidget.hasChildNodes()) {
+                    turnstile.render('#register-turnstile', {
+                        sitekey: '0x4AAAAAAB_w9INZSbixJ5Nk',
+                        theme: 'auto'
+                    });
+                }
+            }
+        };
+    </script>
+    <script src="assets/js/auth.js?v=4"></script>
 </body>
 </html>
