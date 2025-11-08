@@ -71,28 +71,52 @@
     </div>
 
     <script>
-        // Explicitly render Turnstile widgets when ready
-        window.onloadTurnstileCallback = function () {
-            console.log('Turnstile loaded, rendering widgets');
-            if (typeof turnstile !== 'undefined') {
-                const loginWidget = document.getElementById('login-turnstile');
-                const registerWidget = document.getElementById('register-turnstile');
+        // Render Turnstile widgets when ready
+        function renderTurnstileWidgets() {
+            console.log('Attempting to render Turnstile widgets');
+            if (typeof turnstile === 'undefined') {
+                console.warn('Turnstile not loaded yet, retrying in 500ms');
+                setTimeout(renderTurnstileWidgets, 500);
+                return;
+            }
 
-                if (loginWidget && !loginWidget.hasChildNodes()) {
+            const loginWidget = document.getElementById('login-turnstile');
+            const registerWidget = document.getElementById('register-turnstile');
+
+            if (loginWidget && !loginWidget.hasChildNodes()) {
+                try {
                     turnstile.render('#login-turnstile', {
                         sitekey: '0x4AAAAAAB_w9INZSbixJ5Nk',
                         theme: 'auto'
                     });
+                    console.log('Login Turnstile widget rendered');
+                } catch (e) {
+                    console.error('Failed to render login widget:', e);
                 }
+            }
 
-                if (registerWidget && !registerWidget.hasChildNodes()) {
+            if (registerWidget && !registerWidget.hasChildNodes()) {
+                try {
                     turnstile.render('#register-turnstile', {
                         sitekey: '0x4AAAAAAB_w9INZSbixJ5Nk',
                         theme: 'auto'
                     });
+                    console.log('Register Turnstile widget rendered');
+                } catch (e) {
+                    console.error('Failed to render register widget:', e);
                 }
             }
-        };
+        }
+
+        // Try to render when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderTurnstileWidgets);
+        } else {
+            renderTurnstileWidgets();
+        }
+
+        // Also set the callback for when Turnstile API loads
+        window.onloadTurnstileCallback = renderTurnstileWidgets;
     </script>
     <script src="assets/js/auth-login.js"></script>
 </body>
