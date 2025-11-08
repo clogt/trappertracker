@@ -296,6 +296,129 @@
         .menu-item:active {
             background: #374151;
         }
+
+        /* First-time visitor popup */
+        .welcome-popup-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 5000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .welcome-popup-backdrop.active {
+            display: flex;
+        }
+
+        .welcome-popup {
+            background: white;
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            animation: popupSlideIn 0.4s ease-out;
+        }
+
+        @keyframes popupSlideIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .welcome-popup-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .welcome-popup-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .welcome-popup-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .welcome-popup-content {
+            color: #374151;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .welcome-popup-content p {
+            margin-bottom: 12px;
+        }
+
+        .welcome-popup-badge {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .welcome-popup-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .welcome-popup-btn {
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .welcome-popup-btn-primary {
+            background: #10b981;
+            color: white;
+        }
+
+        .welcome-popup-btn-primary:hover {
+            background: #059669;
+        }
+
+        .welcome-popup-btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .welcome-popup-btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        @media (max-width: 640px) {
+            .welcome-popup {
+                padding: 24px 20px;
+            }
+
+            .welcome-popup-title {
+                font-size: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -415,6 +538,30 @@
             <a href="/dashboard.html" class="menu-item">📊 Dashboard</a>
             <a href="/login.html" class="menu-item">🔐 Login</a>
             <a href="/donate.html" class="menu-item">♥️ Support Us</a>
+        </div>
+    </div>
+
+    <!-- First-Time Visitor Welcome Popup -->
+    <div class="welcome-popup-backdrop" id="welcomePopupBackdrop">
+        <div class="welcome-popup">
+            <div class="welcome-popup-header">
+                <div class="welcome-popup-badge">🚧 BETA</div>
+                <h2 class="welcome-popup-title">Welcome to TrapperTracker!</h2>
+                <p class="welcome-popup-subtitle">Real-time pet safety mapping</p>
+            </div>
+            <div class="welcome-popup-content">
+                <p><strong>Thank you for visiting!</strong> We're excited to have you here.</p>
+                <p>⚠️ <strong>Please note:</strong> TrapperTracker is currently in active development. While the core features are functional, some features may still be incomplete or under refinement.</p>
+                <p>We're a community-driven, open-source project working to keep pets safe. Your patience and support mean everything as we build this together!</p>
+            </div>
+            <div class="welcome-popup-buttons">
+                <a href="/donate.html" class="welcome-popup-btn welcome-popup-btn-primary">
+                    💚 Support Our Mission
+                </a>
+                <button id="closeWelcomePopup" class="welcome-popup-btn welcome-popup-btn-secondary">
+                    Got it, let's explore!
+                </button>
+            </div>
         </div>
     </div>
 
@@ -822,8 +969,36 @@
             }
         });
 
+        // First-time visitor welcome popup
+        function checkFirstVisit() {
+            const hasVisited = localStorage.getItem('trappertracker_visited');
+            if (!hasVisited) {
+                // Show popup after a brief delay
+                setTimeout(() => {
+                    document.getElementById('welcomePopupBackdrop').classList.add('active');
+                }, 500);
+            }
+        }
+
+        // Close welcome popup
+        document.getElementById('closeWelcomePopup').addEventListener('click', () => {
+            document.getElementById('welcomePopupBackdrop').classList.remove('active');
+            localStorage.setItem('trappertracker_visited', 'true');
+        });
+
+        // Also close if backdrop is clicked
+        document.getElementById('welcomePopupBackdrop').addEventListener('click', (e) => {
+            if (e.target.id === 'welcomePopupBackdrop') {
+                document.getElementById('welcomePopupBackdrop').classList.remove('active');
+                localStorage.setItem('trappertracker_visited', 'true');
+            }
+        });
+
         // Initialize
-        window.addEventListener('load', initMap);
+        window.addEventListener('load', () => {
+            initMap();
+            checkFirstVisit();
+        });
     </script>
 </body>
 </html>
