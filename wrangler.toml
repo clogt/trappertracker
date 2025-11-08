@@ -1,8 +1,6 @@
 name = "trappertracker"
-main = "functions/_worker.js"
 compatibility_date = "2023-10-30"
-account_id = "aaa44243e7d12c5daab2555cc08eb8aa"
-
+pages_build_output_dir = "./public"
 
 [vars]
 DATABASE_ID = "your-database-id"
@@ -16,6 +14,3 @@ database_id = "58d143ae-9c04-4136-b155-10f616846291"
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "trapper-tracker-photos"
-
-[assets]
-directory = "./public"
