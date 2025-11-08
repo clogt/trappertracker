@@ -906,15 +906,46 @@
                     messageEl.textContent = 'Geocoding address...';
                     messageEl.style.display = 'block';
 
-                    const geocodeResponse = await fetch(
+                    // Try full address first
+                    let geocodeResponse = await fetch(
                         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationValue)}&format=json&limit=1&countrycodes=us`,
                         { headers: { 'User-Agent': 'TrapperTracker/1.0' } }
                     );
 
-                    const geocodeData = await geocodeResponse.json();
+                    let geocodeData = await geocodeResponse.json();
+
+                    // If full address fails, try to extract and geocode city/state/ZIP
+                    if (!geocodeData || geocodeData.length === 0) {
+                        messageEl.textContent = 'Exact address not found, trying city/ZIP...';
+
+                        // Extract city, state, ZIP from address (assumes format: "address, city, state zip")
+                        const parts = locationValue.split(',').map(p => p.trim());
+                        let fallbackQuery = '';
+
+                        if (parts.length >= 2) {
+                            // Try last 2 parts (city, state zip)
+                            fallbackQuery = parts.slice(-2).join(', ');
+                        } else {
+                            // Try extracting ZIP code (5 digits) and state
+                            const zipMatch = locationValue.match(/\b(\d{5})\b/);
+                            const stateMatch = locationValue.match(/\b([A-Z]{2})\b/i);
+                            if (zipMatch || stateMatch) {
+                                fallbackQuery = [stateMatch?.[0], zipMatch?.[0]].filter(Boolean).join(' ');
+                            }
+                        }
+
+                        if (fallbackQuery) {
+                            geocodeResponse = await fetch(
+                                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fallbackQuery)}&format=json&limit=1&countrycodes=us`,
+                                { headers: { 'User-Agent': 'TrapperTracker/1.0' } }
+                            );
+                            geocodeData = await geocodeResponse.json();
+                        }
+                    }
+
                     if (!geocodeData || geocodeData.length === 0) {
                         messageEl.className = 'message error';
-                        messageEl.textContent = 'Could not find that address. Please try a different address or use map selection.';
+                        messageEl.textContent = 'Could not find that location. Please try a different address, city/ZIP, or use map selection.';
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Submit Report';
                         return;
@@ -922,6 +953,11 @@
 
                     reportLat = parseFloat(geocodeData[0].lat);
                     reportLng = parseFloat(geocodeData[0].lon);
+
+                    // Show what location was found
+                    const foundLocation = geocodeData[0].display_name.split(',').slice(0, 3).join(',');
+                    messageEl.className = 'message';
+                    messageEl.textContent = `Located: ${foundLocation}`;
                 } else {
                     // Use selected coordinates from map
                     reportLat = selectedLat || userLat;
