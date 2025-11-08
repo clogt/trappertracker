@@ -55,6 +55,36 @@ export async function authenticateUser(request, env) {
     }
 }
 
+// Validate Turnstile token
+async function validateTurnstile(token, env, ip) {
+    if (!token) {
+        return { success: false, error: 'CAPTCHA token missing' };
+    }
+
+    if (!env.TURNSTILE_SECRET_KEY) {
+        console.warn('TURNSTILE_SECRET_KEY not configured, skipping validation');
+        return { success: true }; // Allow if not configured
+    }
+
+    try {
+        const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                secret: env.TURNSTILE_SECRET_KEY,
+                response: token,
+                remoteip: ip
+            })
+        });
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Turnstile validation error:', error);
+        return { success: false, error: 'CAPTCHA validation failed' };
+    }
+}
+
 export async function handleRegisterRequest(request, env) {
     const ip = request.headers.get('cf-connecting-ip') || '127.0.0.1';
     if (!rateLimiter(ip)) {
@@ -66,7 +96,16 @@ export async function handleRegisterRequest(request, env) {
     }
 
     try {
-        const { email, password } = await request.json();
+        const { email, password, turnstileToken } = await request.json();
+
+        // Validate Turnstile CAPTCHA
+        const turnstileResult = await validateTurnstile(turnstileToken, env, ip);
+        if (!turnstileResult.success) {
+            return new Response(JSON.stringify({ error: 'CAPTCHA validation failed. Please try again.' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
         if (!email || !password || !passwordRegex.test(password)) {
@@ -103,7 +142,16 @@ export async function handleLoginRequest(request, env) {
     }
 
     try {
-        const { email, password } = await request.json();
+        const { email, password, turnstileToken } = await request.json();
+
+        // Validate Turnstile CAPTCHA
+        const turnstileResult = await validateTurnstile(turnstileToken, env, ip);
+        if (!turnstileResult.success) {
+            return new Response(JSON.stringify({ error: 'CAPTCHA validation failed. Please try again.' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
         if (!email || !password) {
             return new Response("Email and password are required", { status: 400 });
@@ -131,7 +179,13 @@ export async function handleLoginRequest(request, env) {
             .setExpirationTime('2h') // Token expires in 2 hours
             .sign(JWT_SECRET);
 
-        const response = new Response('Login successful', { status: 200 });
+        const response = new Response(JSON.stringify({
+            message: 'Login successful',
+            role: user.role || 'user'
+        }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
         response.headers.set('Set-Cookie', `session=${jwt}; Path=/; HttpOnly; Secure; SameSite=Lax`);
         return response;
 
