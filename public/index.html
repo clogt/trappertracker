@@ -955,7 +955,7 @@
                     setTimeout(closeReportOverlay, 2000);
                 } else if (response.status === 401) {
                     messageEl.className = 'message error';
-                    messageEl.textContent = 'Please login to submit reports.';
+                    messageEl.innerHTML = 'Please <a href="/login.html" style="color: #3b82f6; text-decoration: underline; font-weight: 600;">login or register</a> to submit reports.';
                 } else {
                     messageEl.className = 'message error';
                     messageEl.textContent = 'Failed to submit report. Please try again.';
