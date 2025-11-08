@@ -15,3 +15,10 @@ package-lock.json
 package.json
 plesk.gpg
 worker.js.txt
+admin-app/*.png
+
+# Admin files (keep secure, not in public repo)
+admin-app/
+public/admin-*.html
+public/api/admin/
+public/assets/js/admin.js
