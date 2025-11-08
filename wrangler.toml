@@ -6,11 +6,16 @@ account_id = "aaa44243e7d12c5daab2555cc08eb8aa"
 
 [vars]
 DATABASE_ID = "your-database-id"
+R2_BUCKET_PUBLIC_URL = "pub-d3169177648b4bc6b811ad7749915474.r2.dev"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "trappertracker"
 database_id = "58d143ae-9c04-4136-b155-10f616846291"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "trapper-tracker-photos"
 
 [assets]
 directory = "./public"
