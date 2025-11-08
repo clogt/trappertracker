@@ -148,6 +148,46 @@
                 <h3 class="text-2xl font-bold text-green-600 dark:text-green-400 mb-4">Support Our Mission on GoFundMe!</h3>
                 <div class="gfm-embed mx-auto" data-url="https://www.gofundme.com/f/help-trappertracker-keep-pets-safe/widget/large?sharesheet=undefined&attribution_id=sl:54eac9e2-dec9-4210-8b86-cfb1fe3ddfad"></div><script defer src="https://www.gofundme.com/static/js/embed.js"></script>
             </div>
+
+            <!-- Instagram Sharing Section -->
+            <div class="mt-12 border-t pt-8 border-gray-300 dark:border-gray-600">
+                <h3 class="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-4">📱 Help Us Spread the Word on Instagram!</h3>
+                <p class="text-gray-700 dark:text-gray-300 mb-6">No money to donate? No problem! Sharing our mission on social media helps us reach more pet owners and save more pets. Click the button below to share our pre-written post on Instagram.</p>
+
+                <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-6 rounded-lg shadow-lg">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg">
+                        <h4 class="text-xl font-bold text-gray-800 dark:text-white mb-4">📋 How It Works</h4>
+                        <ol class="text-left list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-6">
+                            <li>Click the "Share on Instagram" button below</li>
+                            <li>The post caption will be copied to your clipboard</li>
+                            <li>Open Instagram and create a new post</li>
+                            <li>Paste the caption and add a photo (we suggest a heartwarming pet photo!)</li>
+                            <li>Post and tag <strong>#TrapperTracker</strong></li>
+                        </ol>
+
+                        <button id="shareInstagramBtn" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:from-purple-700 hover:to-pink-700 transition transform hover:scale-105 mb-4">
+                            📱 Share on Instagram
+                        </button>
+
+                        <div id="shareMessage" class="hidden text-green-600 dark:text-green-400 font-semibold text-center py-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                            ✓ Caption copied! Now open Instagram and paste it.
+                        </div>
+
+                        <!-- Optional: Download shareable image button -->
+                        <p class="text-sm text-gray-600 dark:text-gray-400 text-center mt-4">
+                            <strong>Tip:</strong> Use a heartwarming photo of a pet reunion, or a split-screen showing a "Lost Dog" flyer next to a happy reunion!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Preview of the caption -->
+                <div class="mt-6">
+                    <button id="previewBtn" class="text-indigo-600 dark:text-indigo-400 hover:underline text-sm">
+                        👁️ Preview the Instagram caption
+                    </button>
+                    <div id="captionPreview" class="hidden mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-left text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono"></div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -158,6 +198,21 @@
     </footer>
 
     <script>
+        // Instagram caption text
+        const instagramCaption = `Every pet owner's worst nightmare: they're gone. The silence is deafening. The panic is real. Where do you even begin to look?
+
+Scattered social media posts and lost flyers aren't enough. We need a lifeline.
+
+Introducing **TrapperTracker.com** — a real-time, map-based safety net for our beloved pets.
+
+Our mission is to replace fear with hope. We map active trapping threats to prevent tragedy and provide a centralized hub for lost & found pets to bring them home faster. It's a community watch, for our furry family members.
+
+Help us build a world where every pet is safe. Share this post. Spread the word. Visit TrapperTracker.com to see the map and learn more.
+
+TrapperTracker is free and built by the community, but we need your help to grow and add new features like AI-powered pet matching. Support our mission by visiting **trappertracker.com/donate** (or click the link in our bio!).
+
+#TrapperTracker #PetSafety #LostPet #FoundPet #LostAndFoundPets #DogSafety #CatSafety #CommunityWatch #ProtectOurPets #BringThemHome #AnimalWelfare #TechForGood #GoFundMe #PetsAreFamily`;
+
         // Mobile menu toggle
         document.addEventListener('DOMContentLoaded', () => {
             const menuBtn = document.getElementById('menuBtn');
@@ -175,6 +230,47 @@
                 menuBackdrop.addEventListener('click', () => {
                     menuSidebar.classList.remove('active');
                     menuBackdrop.classList.remove('active');
+                });
+            }
+
+            // Instagram share button
+            const shareBtn = document.getElementById('shareInstagramBtn');
+            const shareMessage = document.getElementById('shareMessage');
+
+            if (shareBtn) {
+                shareBtn.addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(instagramCaption);
+                        shareMessage.classList.remove('hidden');
+                        shareBtn.textContent = '✓ Caption Copied!';
+                        shareBtn.classList.add('bg-green-600');
+
+                        setTimeout(() => {
+                            shareMessage.classList.add('hidden');
+                            shareBtn.textContent = '📱 Share on Instagram';
+                            shareBtn.classList.remove('bg-green-600');
+                        }, 5000);
+                    } catch (err) {
+                        console.error('Failed to copy:', err);
+                        alert('Failed to copy to clipboard. Please try again.');
+                    }
+                });
+            }
+
+            // Preview button
+            const previewBtn = document.getElementById('previewBtn');
+            const captionPreview = document.getElementById('captionPreview');
+
+            if (previewBtn) {
+                previewBtn.addEventListener('click', () => {
+                    if (captionPreview.classList.contains('hidden')) {
+                        captionPreview.textContent = instagramCaption;
+                        captionPreview.classList.remove('hidden');
+                        previewBtn.textContent = '👁️ Hide caption preview';
+                    } else {
+                        captionPreview.classList.add('hidden');
+                        previewBtn.textContent = '👁️ Preview the Instagram caption';
+                    }
                 });
             }
         });
