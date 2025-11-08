@@ -571,6 +571,7 @@
         let selectedLocationMarker;
         let userLat, userLng;
         let selectedLat, selectedLng;
+        let dangerZoneMarkers = L.layerGroup(); // Track danger zone markers
 
         // Initialize map
         function initMap() {
@@ -582,6 +583,9 @@
                 maxZoom: 19,
                 attribution: '© OpenStreetMap'
             }).addTo(map);
+
+            // Add danger zone markers layer
+            dangerZoneMarkers.addTo(map);
 
             // Add zoom control to bottom right
             L.control.zoom({
@@ -658,19 +662,32 @@
         // Load danger zones
         async function loadDangerZones() {
             try {
-                const response = await fetch('/api/reports');
-                if (!response.ok) return;
+                // Clear existing markers
+                dangerZoneMarkers.clearLayers();
+
+                const response = await fetch('/api/mapdata');
+                if (!response.ok) {
+                    console.error('Failed to load map data:', response.status);
+                    return;
+                }
 
                 const data = await response.json();
-                const dangerZones = data.filter(r => r.report_type === 'Danger Zone');
+                console.log('Loaded reports:', data.length);
 
-                dangerZones.forEach(report => {
-                    L.marker([report.latitude, report.longitude], {
+                data.forEach(report => {
+                    const marker = L.marker([report.latitude, report.longitude], {
                         icon: L.icon({
                             iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNCIgZmlsbD0iI2VmNDQ0NCIgc3Ryb2tlPSIjOTkxYjFiIiBzdHJva2Utd2lkdGg9IjIiLz48dGV4dCB4PSIxNiIgeT0iMjIiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIj4hPC90ZXh0Pjwvc3ZnPg==',
                             iconSize: [32, 32]
                         })
-                    }).addTo(map).bindPopup(`<b>⚠️ Danger Zone</b><br>${report.description || 'No details'}`);
+                    });
+
+                    marker.bindPopup(`
+                        <b>⚠️ ${report.report_type || 'Danger Zone'}</b><br>
+                        ${report.description || 'No details'}
+                    `);
+
+                    dangerZoneMarkers.addLayer(marker);
                 });
             } catch (error) {
                 console.error('Error loading danger zones:', error);
