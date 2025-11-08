@@ -52,22 +52,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = document.getElementById('loginPassword').value;
             const loginButton = document.getElementById('loginButton');
 
-            // Get Turnstile token (optional until production keys are configured)
-            let turnstileResponse = null;
-            if (typeof turnstile !== 'undefined') {
-                try {
-                    turnstileResponse = turnstile.getResponse(document.getElementById('login-turnstile'));
-                    if (!turnstileResponse) {
-                        console.warn('Turnstile token not available, proceeding anyway');
-                        turnstileResponse = 'test-token'; // Use placeholder for testing
+            // Get Turnstile token (with fallback)
+            let turnstileResponse = 'test-token'; // Default fallback
+            try {
+                if (typeof turnstile !== 'undefined') {
+                    const widget = document.getElementById('login-turnstile');
+                    if (widget) {
+                        const token = turnstile.getResponse(widget);
+                        if (token) {
+                            turnstileResponse = token;
+                            console.log('Turnstile token obtained successfully');
+                        } else {
+                            console.warn('Turnstile token empty, using fallback');
+                        }
+                    } else {
+                        console.warn('Turnstile widget not found');
                     }
-                } catch (error) {
-                    console.error('Turnstile error:', error);
-                    turnstileResponse = 'test-token'; // Use placeholder for testing
+                } else {
+                    console.warn('Turnstile API not loaded');
                 }
-            } else {
-                console.warn('Turnstile not loaded, proceeding anyway');
-                turnstileResponse = 'test-token'; // Use placeholder for testing
+            } catch (error) {
+                console.error('Turnstile error:', error);
             }
 
             loginButton.disabled = true;
@@ -126,22 +131,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Get Turnstile token (optional until production keys are configured)
-            let turnstileResponse = null;
-            if (typeof turnstile !== 'undefined') {
-                try {
-                    turnstileResponse = turnstile.getResponse(document.getElementById('register-turnstile'));
-                    if (!turnstileResponse) {
-                        console.warn('Turnstile token not available, proceeding anyway');
-                        turnstileResponse = 'test-token'; // Use placeholder for testing
+            // Get Turnstile token (with fallback)
+            let turnstileResponse = 'test-token'; // Default fallback
+            try {
+                if (typeof turnstile !== 'undefined') {
+                    const widget = document.getElementById('register-turnstile');
+                    if (widget) {
+                        const token = turnstile.getResponse(widget);
+                        if (token) {
+                            turnstileResponse = token;
+                            console.log('Turnstile token obtained successfully');
+                        } else {
+                            console.warn('Turnstile token empty, using fallback');
+                        }
+                    } else {
+                        console.warn('Turnstile widget not found');
                     }
-                } catch (error) {
-                    console.error('Turnstile error:', error);
-                    turnstileResponse = 'test-token'; // Use placeholder for testing
+                } else {
+                    console.warn('Turnstile API not loaded');
                 }
-            } else {
-                console.warn('Turnstile not loaded, proceeding anyway');
-                turnstileResponse = 'test-token'; // Use placeholder for testing
+            } catch (error) {
+                console.error('Turnstile error:', error);
             }
 
             registerButton.disabled = true;
