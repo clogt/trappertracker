@@ -7,28 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const showLoginLink = document.getElementById('showLogin');
     const registerSection = document.getElementById('registerSection');
     const authMessage = document.getElementById('auth-message');
-    const themeToggle = document.getElementById('toggle-theme-login');
-
-    // Theme toggle for login page
-    const applyTheme = (isDark) => {
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    };
-
-    const savedTheme = localStorage.getItem('theme');
-    const isDarkMode = savedTheme === 'dark';
-    applyTheme(isDarkMode);
-    if (themeToggle) {
-        themeToggle.checked = isDarkMode;
-        themeToggle.addEventListener('change', (event) => {
-            const isDark = event.target.checked;
-            applyTheme(isDark);
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        });
-    }
 
     // Helper function to display auth messages
     function displayAuthMessage(message, isError = true) {
@@ -75,9 +53,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const loginButton = document.getElementById('loginButton');
 
             // Get Turnstile token
-            const turnstileResponse = turnstile.getResponse(document.getElementById('login-turnstile'));
-            if (!turnstileResponse) {
-                displayAuthMessage('Please complete the CAPTCHA verification.');
+            let turnstileResponse = null;
+            if (typeof turnstile !== 'undefined') {
+                turnstileResponse = turnstile.getResponse(document.getElementById('login-turnstile'));
+                if (!turnstileResponse) {
+                    displayAuthMessage('Please complete the CAPTCHA verification.');
+                    return;
+                }
+            } else {
+                displayAuthMessage('CAPTCHA not loaded. Please refresh the page.');
                 return;
             }
 
@@ -138,9 +122,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Get Turnstile token
-            const turnstileResponse = turnstile.getResponse(document.getElementById('register-turnstile'));
-            if (!turnstileResponse) {
-                displayAuthMessage('Please complete the CAPTCHA verification.');
+            let turnstileResponse = null;
+            if (typeof turnstile !== 'undefined') {
+                turnstileResponse = turnstile.getResponse(document.getElementById('register-turnstile'));
+                if (!turnstileResponse) {
+                    displayAuthMessage('Please complete the CAPTCHA verification.');
+                    return;
+                }
+            } else {
+                displayAuthMessage('CAPTCHA not loaded. Please refresh the page.');
                 return;
             }
 
