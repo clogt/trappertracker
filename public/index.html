@@ -516,7 +516,7 @@
                         <span>Enter Address</span>
                     </label>
                 </div>
-                <input type="text" class="form-input" id="reportLocation" placeholder="Tap the map or enter an address..." required>
+                <input type="text" class="form-input" id="reportLocation" placeholder="Coordinates will appear here" required readonly>
                 <p style="font-size: 12px; color: #6b7280; margin-top: 4px;" id="locationHint">Close this form and tap the map to select a location</p>
             </div>
 
@@ -714,12 +714,16 @@
 
                 if (e.target.value === 'map') {
                     locationInput.readOnly = true;
+                    locationInput.placeholder = 'Coordinates will appear here';
                     locationHint.textContent = 'Close this form and tap the map to select a location';
                     if (selectedLat && selectedLng) {
                         locationInput.value = `${selectedLat.toFixed(6)}, ${selectedLng.toFixed(6)}`;
+                    } else {
+                        locationInput.value = '';
                     }
                 } else {
                     locationInput.readOnly = false;
+                    locationInput.placeholder = '123 Main St, City, State ZIP';
                     locationInput.value = '';
                     locationHint.textContent = 'Enter a street address, city, or ZIP code';
                     locationInput.focus();
