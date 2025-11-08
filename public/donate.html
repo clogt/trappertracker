@@ -5,21 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrapperTracker - Support Us</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-     crossorigin=""/>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         h1, h2, h3, h4, h5, h6 {
             font-weight: bold;
             margin-top: 1em;
             margin-bottom: 0.5em;
         }
-        h1 { font-size: 2.25em; }
-        h2 { font-size: 1.75em; }
-        h3 { font-size: 1.5em; }
+        h1 { font-size: clamp(1.5rem, 5vw, 2.25rem); }
+        h2 { font-size: clamp(1.25rem, 4vw, 1.75rem); }
+        h3 { font-size: clamp(1.1rem, 3vw, 1.5rem); }
         p {
             margin-bottom: 1em;
             line-height: 1.6;
@@ -37,22 +34,78 @@
         li {
             margin-bottom: 0.5em;
         }
+
+        /* Mobile menu */
+        .menu-sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100vh;
+            background: #1f2937;
+            z-index: 3000;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+        }
+        .menu-sidebar.active {
+            left: 0;
+        }
+        .menu-sidebar-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2500;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .menu-sidebar-backdrop.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .menu-items {
+            padding: 20px;
+        }
+        .menu-item {
+            display: block;
+            padding: 14px;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .menu-item:active {
+            background: #374151;
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200">
-    <header class="bg-white dark:bg-gray-800 shadow">
-        <div class="container mx-auto p-4 flex justify-between items-center">
-            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">TrapperTracker</h1>
-            <nav>
-                <a href="/" class="text-gray-600 hover:text-gray-800 px-3 py-2">Map</a>
-                <a href="/#report-form" class="text-gray-600 hover:text-gray-800 px-3 py-2">Submit a Report</a>
-                <a id="loginLinkDonate" href="/login.html" class="text-gray-600 hover:text-gray-800 px-3 py-2">Login/Register</a>
-                <button id="logoutBtnDonate" class="hidden text-red-600 hover:text-red-700 px-3 py-2">Logout</button>
-                <a href="/donate.html" id="donation-link" class="bg-green-500 text-white font-bold py-2 px-4 rounded-full hover:bg-green-600">♥ Support Us</a>
-                <a href="https://github.com/sponsors/clogt" target="_blank" class="text-gray-600 hover:text-gray-800 px-3 py-2">GitHub Sponsors</a>
-            </nav>
+    <!-- Fixed Header -->
+    <header class="bg-white dark:bg-gray-800 shadow sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <button class="md:hidden text-2xl text-gray-700 dark:text-gray-200" id="menuBtn">☰</button>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">TrapperTracker</h1>
+                <a href="/" class="text-sm md:text-base bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700">Back to Map</a>
+            </div>
         </div>
     </header>
+
+    <!-- Mobile Menu Sidebar -->
+    <div class="menu-sidebar-backdrop" id="menuBackdrop"></div>
+    <div class="menu-sidebar" id="menuSidebar">
+        <div class="menu-items">
+            <a href="/" class="menu-item">🏠 Home</a>
+            <a href="/advanced.html" class="menu-item">⚙️ Advanced Features</a>
+            <a href="/dashboard.html" class="menu-item">📊 Dashboard</a>
+            <a href="/login.html" class="menu-item">🔐 Login</a>
+            <a href="/donate.html" class="menu-item">♥️ Support Us</a>
+            <a href="https://github.com/clogt/trappertracker" class="menu-item" target="_blank">💻 GitHub</a>
+        </div>
+    </div>
 
     <main class="container mx-auto p-4">
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mt-6">
@@ -105,28 +158,23 @@
     </footer>
 
     <script>
-        // Check if user is logged in and toggle logout/login buttons
+        // Mobile menu toggle
         document.addEventListener('DOMContentLoaded', () => {
-            const userRole = localStorage.getItem('userRole');
-            const logoutBtn = document.getElementById('logoutBtnDonate');
-            const loginLink = document.getElementById('loginLinkDonate');
+            const menuBtn = document.getElementById('menuBtn');
+            const menuSidebar = document.getElementById('menuSidebar');
+            const menuBackdrop = document.getElementById('menuBackdrop');
 
-            if (userRole) {
-                // User is logged in - show logout button, hide login link
-                if (logoutBtn) logoutBtn.classList.remove('hidden');
-                if (loginLink) loginLink.classList.add('hidden');
+            if (menuBtn) {
+                menuBtn.addEventListener('click', () => {
+                    menuSidebar.classList.add('active');
+                    menuBackdrop.classList.add('active');
+                });
             }
 
-            // Logout functionality
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', () => {
-                    // Clear localStorage
-                    localStorage.removeItem('userRole');
-                    // Clear cookies
-                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                    document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                    // Redirect to home
-                    window.location.href = '/';
+            if (menuBackdrop) {
+                menuBackdrop.addEventListener('click', () => {
+                    menuSidebar.classList.remove('active');
+                    menuBackdrop.classList.remove('active');
                 });
             }
         });

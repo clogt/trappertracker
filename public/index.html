@@ -382,8 +382,19 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">Location</label>
-                <input type="text" class="form-input" id="reportLocation" readonly required>
+                <label class="form-label">Location Selection</label>
+                <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="radio" name="locationMode" value="map" checked>
+                        <span>Tap on Map</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="radio" name="locationMode" value="address">
+                        <span>Enter Address</span>
+                    </label>
+                </div>
+                <input type="text" class="form-input" id="reportLocation" placeholder="Tap the map or enter an address..." required>
+                <p style="font-size: 12px; color: #6b7280; margin-top: 4px;" id="locationHint">Close this form and tap the map to select a location</p>
             </div>
 
             <div class="form-group">
@@ -410,7 +421,9 @@
     <script>
         let map;
         let userMarker;
+        let selectedLocationMarker;
         let userLat, userLng;
+        let selectedLat, selectedLng;
 
         // Initialize map
         function initMap() {
@@ -433,6 +446,37 @@
 
             // Load danger zones
             loadDangerZones();
+
+            // Add click handler for selecting location
+            map.on('click', handleMapClick);
+        }
+
+        // Handle map clicks to select location
+        function handleMapClick(e) {
+            selectedLat = e.latlng.lat;
+            selectedLng = e.latlng.lng;
+
+            // Remove old marker if it exists
+            if (selectedLocationMarker) {
+                map.removeLayer(selectedLocationMarker);
+            }
+
+            // Add new marker at clicked location
+            selectedLocationMarker = L.marker([selectedLat, selectedLng], {
+                icon: L.icon({
+                    iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCAzMiA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTYgMEMxMC4xIDAgNS41IDQuNiA1LjUgMTBDNS41IDE3LjUgMTYgMzIgMTYgMzJTMjYuNSAxNy41IDI2LjUgMTBDMjYuNSA0LjYgMjEuOSAwIDE2IDBaIiBmaWxsPSIjZWY0NDQ0IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiLz48Y2lyY2xlIGN4PSIxNiIgY3k9IjEwIiByPSI0IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==',
+                    iconSize: [32, 48],
+                    iconAnchor: [16, 48]
+                })
+            }).addTo(map);
+
+            selectedLocationMarker.bindPopup('📍 Selected Location').openPopup();
+
+            // Update location field if in map mode
+            const locationModeRadio = document.querySelector('input[name="locationMode"]:checked');
+            if (locationModeRadio && locationModeRadio.value === 'map') {
+                document.getElementById('reportLocation').value = `${selectedLat.toFixed(6)}, ${selectedLng.toFixed(6)}`;
+            }
         }
 
         // Request user's location
@@ -515,6 +559,27 @@
             return localStorage.getItem('userRole') !== null;
         }
 
+        // Location mode toggle
+        document.querySelectorAll('input[name="locationMode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const locationInput = document.getElementById('reportLocation');
+                const locationHint = document.getElementById('locationHint');
+
+                if (e.target.value === 'map') {
+                    locationInput.readOnly = true;
+                    locationHint.textContent = 'Close this form and tap the map to select a location';
+                    if (selectedLat && selectedLng) {
+                        locationInput.value = `${selectedLat.toFixed(6)}, ${selectedLng.toFixed(6)}`;
+                    }
+                } else {
+                    locationInput.readOnly = false;
+                    locationInput.value = '';
+                    locationHint.textContent = 'Enter a street address, city, or ZIP code';
+                    locationInput.focus();
+                }
+            });
+        });
+
         // Report button - show auth or report form
         document.getElementById('reportBtn').addEventListener('click', () => {
             document.getElementById('reportOverlay').classList.add('active');
@@ -525,9 +590,12 @@
                 document.getElementById('authForm').style.display = 'none';
                 document.getElementById('reportForm').style.display = 'block';
 
-                // Set location from user's current position
-                if (userLat && userLng) {
-                    document.getElementById('reportLocation').value = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
+                // Set location from selected position or user's current position
+                const locationInput = document.getElementById('reportLocation');
+                if (selectedLat && selectedLng) {
+                    locationInput.value = `${selectedLat.toFixed(6)}, ${selectedLng.toFixed(6)}`;
+                } else if (userLat && userLng) {
+                    locationInput.value = `${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
                 }
             } else {
                 // Show auth form
@@ -672,18 +740,50 @@
 
             const submitBtn = document.getElementById('submitBtn');
             const messageEl = document.getElementById('reportMessage');
+            const locationMode = document.querySelector('input[name="locationMode"]:checked').value;
+            const locationValue = document.getElementById('reportLocation').value;
 
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
 
-            const formData = {
-                report_type: document.getElementById('reportType').value,
-                latitude: userLat,
-                longitude: userLng,
-                description: document.getElementById('reportDescription').value
-            };
+            let reportLat, reportLng;
 
             try {
+                // If address mode, geocode the address first
+                if (locationMode === 'address') {
+                    messageEl.className = 'message';
+                    messageEl.textContent = 'Geocoding address...';
+                    messageEl.style.display = 'block';
+
+                    const geocodeResponse = await fetch(
+                        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationValue)}&format=json&limit=1&countrycodes=us`,
+                        { headers: { 'User-Agent': 'TrapperTracker/1.0' } }
+                    );
+
+                    const geocodeData = await geocodeResponse.json();
+                    if (!geocodeData || geocodeData.length === 0) {
+                        messageEl.className = 'message error';
+                        messageEl.textContent = 'Could not find that address. Please try a different address or use map selection.';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Submit Report';
+                        return;
+                    }
+
+                    reportLat = parseFloat(geocodeData[0].lat);
+                    reportLng = parseFloat(geocodeData[0].lon);
+                } else {
+                    // Use selected coordinates from map
+                    reportLat = selectedLat || userLat;
+                    reportLng = selectedLng || userLng;
+                }
+
+                const formData = {
+                    report_type: document.getElementById('reportType').value,
+                    latitude: reportLat,
+                    longitude: reportLng,
+                    description: document.getElementById('reportDescription').value
+                };
+
                 const response = await fetch('/api/report', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -695,6 +795,15 @@
                     messageEl.className = 'message success';
                     messageEl.textContent = '✓ Report submitted successfully!';
                     document.getElementById('reportForm').reset();
+
+                    // Clear selected location marker
+                    if (selectedLocationMarker) {
+                        map.removeLayer(selectedLocationMarker);
+                        selectedLocationMarker = null;
+                        selectedLat = null;
+                        selectedLng = null;
+                    }
+
                     loadDangerZones(); // Reload markers
                     setTimeout(closeReportOverlay, 2000);
                 } else if (response.status === 401) {
