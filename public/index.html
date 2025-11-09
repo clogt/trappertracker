@@ -518,6 +518,12 @@
                 </div>
                 <input type="text" class="form-input" id="reportLocation" placeholder="Coordinates will appear here" required readonly>
                 <p style="font-size: 12px; color: #6b7280; margin-top: 4px;" id="locationHint">Close this form and tap the map to select a location</p>
+
+                <!-- Location picker (shows when geocoding finds multiple results) -->
+                <div id="locationPicker" style="display: none; margin-top: 12px; padding: 12px; background: #f3f4f6; border-radius: 8px;">
+                    <p style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">📍 Choose the correct location:</p>
+                    <div id="locationOptions"></div>
+                </div>
             </div>
 
             <div class="form-group">
@@ -572,6 +578,8 @@
         let userLat, userLng;
         let selectedLat, selectedLng;
         let dangerZoneMarkers = L.layerGroup(); // Track danger zone markers
+        let geocodedLat, geocodedLng; // Store geocoded location choice
+        let pendingGeocodedLocations = []; // Store geocoding results
 
         // Initialize map
         function initMap() {
@@ -723,11 +731,23 @@
             return localStorage.getItem('userRole') !== null;
         }
 
+        // Reset geocoded location when address changes
+        document.getElementById('reportLocation').addEventListener('input', () => {
+            geocodedLat = undefined;
+            geocodedLng = undefined;
+            document.getElementById('locationPicker').style.display = 'none';
+        });
+
         // Location mode toggle
         document.querySelectorAll('input[name="locationMode"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 const locationInput = document.getElementById('reportLocation');
                 const locationHint = document.getElementById('locationHint');
+
+                // Reset geocoded location when switching modes
+                geocodedLat = undefined;
+                geocodedLng = undefined;
+                document.getElementById('locationPicker').style.display = 'none';
 
                 if (e.target.value === 'map') {
                     locationInput.readOnly = true;
@@ -891,6 +911,40 @@
             }
         });
 
+        // Select geocoded location from picker
+        function selectGeocodedLocation(index) {
+            const location = pendingGeocodedLocations[index];
+            geocodedLat = parseFloat(location.lat);
+            geocodedLng = parseFloat(location.lon);
+
+            // Update location field
+            const locationInput = document.getElementById('reportLocation');
+            locationInput.value = location.display_name.split(',').slice(0, 3).join(',');
+
+            // Hide picker
+            document.getElementById('locationPicker').style.display = 'none';
+
+            // Update message
+            const messageEl = document.getElementById('reportMessage');
+            messageEl.className = 'message success';
+            messageEl.textContent = `✓ Location confirmed: ${location.display_name.split(',').slice(0, 2).join(',')}`;
+            messageEl.style.display = 'block';
+
+            // Add marker to map at selected location
+            if (selectedLocationMarker) {
+                map.removeLayer(selectedLocationMarker);
+            }
+            selectedLocationMarker = L.marker([geocodedLat, geocodedLng], {
+                icon: L.icon({
+                    iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCAzMiA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTYgMEMxMC4xIDAgNS41IDQuNiA1LjUgMTBDNS41IDE3LjUgMTYgMzIgMTYgMzJTMjYuNSAxNy41IDI2LjUgMTBDMjYuNSA0LjYgMjEuOSAwIDE2IDBaIiBmaWxsPSIjZWY0NDQ0IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiLz48Y2lyY2xlIGN4PSIxNiIgY3k9IjEwIiByPSI0IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==',
+                    iconSize: [32, 48],
+                    iconAnchor: [16, 48]
+                })
+            }).addTo(map);
+            selectedLocationMarker.bindPopup('📍 Selected Location').openPopup();
+            map.setView([geocodedLat, geocodedLng], 15);
+        }
+
         // Menu toggle
         document.getElementById('menuBtn').addEventListener('click', () => {
             document.getElementById('menuSidebar').classList.add('active');
@@ -919,62 +973,84 @@
             try {
                 // If address mode, geocode the address first
                 if (locationMode === 'address') {
-                    messageEl.className = 'message';
-                    messageEl.textContent = 'Geocoding address...';
-                    messageEl.style.display = 'block';
+                    // If location hasn't been confirmed yet, show picker
+                    if (geocodedLat === undefined || geocodedLng === undefined) {
+                        messageEl.className = 'message';
+                        messageEl.textContent = 'Searching for location...';
+                        messageEl.style.display = 'block';
 
-                    // Try full address first
-                    let geocodeResponse = await fetch(
-                        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationValue)}&format=json&limit=1&countrycodes=us`,
-                        { headers: { 'User-Agent': 'TrapperTracker/1.0' } }
-                    );
+                        // Try full address first with multiple results
+                        let geocodeResponse = await fetch(
+                            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationValue)}&format=json&limit=5&countrycodes=us`,
+                            { headers: { 'User-Agent': 'TrapperTracker/1.0' } }
+                        );
 
-                    let geocodeData = await geocodeResponse.json();
+                        let geocodeData = await geocodeResponse.json();
 
-                    // If full address fails, try to extract and geocode city/state/ZIP
-                    if (!geocodeData || geocodeData.length === 0) {
-                        messageEl.textContent = 'Exact address not found, trying city/ZIP...';
+                        // If full address fails, try city/state/ZIP fallback
+                        if (!geocodeData || geocodeData.length === 0) {
+                            messageEl.textContent = 'Exact address not found, trying city/ZIP...';
 
-                        // Extract city, state, ZIP from address (assumes format: "address, city, state zip")
-                        const parts = locationValue.split(',').map(p => p.trim());
-                        let fallbackQuery = '';
+                            const parts = locationValue.split(',').map(p => p.trim());
+                            let fallbackQuery = '';
 
-                        if (parts.length >= 2) {
-                            // Try last 2 parts (city, state zip)
-                            fallbackQuery = parts.slice(-2).join(', ');
-                        } else {
-                            // Try extracting ZIP code (5 digits) and state
-                            const zipMatch = locationValue.match(/\b(\d{5})\b/);
-                            const stateMatch = locationValue.match(/\b([A-Z]{2})\b/i);
-                            if (zipMatch || stateMatch) {
-                                fallbackQuery = [stateMatch?.[0], zipMatch?.[0]].filter(Boolean).join(' ');
+                            if (parts.length >= 2) {
+                                fallbackQuery = parts.slice(-2).join(', ');
+                            } else {
+                                const zipMatch = locationValue.match(/\b(\d{5})\b/);
+                                const stateMatch = locationValue.match(/\b([A-Z]{2})\b/i);
+                                if (zipMatch || stateMatch) {
+                                    fallbackQuery = [stateMatch?.[0], zipMatch?.[0]].filter(Boolean).join(' ');
+                                }
+                            }
+
+                            if (fallbackQuery) {
+                                geocodeResponse = await fetch(
+                                    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fallbackQuery)}&format=json&limit=5&countrycodes=us`,
+                                    { headers: { 'User-Agent': 'TrapperTracker/1.0' } }
+                                );
+                                geocodeData = await geocodeResponse.json();
                             }
                         }
 
-                        if (fallbackQuery) {
-                            geocodeResponse = await fetch(
-                                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fallbackQuery)}&format=json&limit=1&countrycodes=us`,
-                                { headers: { 'User-Agent': 'TrapperTracker/1.0' } }
-                            );
-                            geocodeData = await geocodeResponse.json();
+                        if (!geocodeData || geocodeData.length === 0) {
+                            messageEl.className = 'message error';
+                            messageEl.textContent = 'Could not find that location. Please try a different address, city/ZIP, or use map selection.';
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Submit Report';
+                            return;
                         }
-                    }
 
-                    if (!geocodeData || geocodeData.length === 0) {
-                        messageEl.className = 'message error';
-                        messageEl.textContent = 'Could not find that location. Please try a different address, city/ZIP, or use map selection.';
+                        // Show location picker if multiple results
+                        pendingGeocodedLocations = geocodeData;
+                        const locationPicker = document.getElementById('locationPicker');
+                        const locationOptions = document.getElementById('locationOptions');
+
+                        locationOptions.innerHTML = '';
+                        geocodeData.forEach((location, index) => {
+                            const option = document.createElement('div');
+                            option.style.cssText = 'padding: 10px; margin: 4px 0; background: white; border-radius: 6px; cursor: pointer; border: 2px solid #e5e7eb;';
+                            option.innerHTML = `
+                                <div style="font-weight: 600; color: #1f2937;">${location.display_name.split(',').slice(0, 2).join(',')}</div>
+                                <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">${location.display_name}</div>
+                            `;
+                            option.onmouseover = () => option.style.borderColor = '#3b82f6';
+                            option.onmouseout = () => option.style.borderColor = '#e5e7eb';
+                            option.onclick = () => selectGeocodedLocation(index);
+                            locationOptions.appendChild(option);
+                        });
+
+                        locationPicker.style.display = 'block';
+                        messageEl.className = 'message';
+                        messageEl.textContent = 'Please select the correct location from the list below:';
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Submit Report';
-                        return;
+                        return; // Stop submission until user picks
                     }
 
-                    reportLat = parseFloat(geocodeData[0].lat);
-                    reportLng = parseFloat(geocodeData[0].lon);
-
-                    // Show what location was found
-                    const foundLocation = geocodeData[0].display_name.split(',').slice(0, 3).join(',');
-                    messageEl.className = 'message';
-                    messageEl.textContent = `Located: ${foundLocation}`;
+                    // Location confirmed, use it
+                    reportLat = geocodedLat;
+                    reportLng = geocodedLng;
                 } else {
                     // Use selected coordinates from map
                     reportLat = selectedLat || userLat;
@@ -1007,6 +1083,11 @@
                         selectedLat = null;
                         selectedLng = null;
                     }
+
+                    // Reset geocoded location
+                    geocodedLat = undefined;
+                    geocodedLng = undefined;
+                    document.getElementById('locationPicker').style.display = 'none';
 
                     loadDangerZones(); // Reload markers
                     setTimeout(closeReportOverlay, 2000);
