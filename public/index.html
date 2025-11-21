@@ -699,9 +699,9 @@
                 // Clear existing markers
                 dangerZoneMarkers.clearLayers();
 
-                const response = await fetch('/api/mapdata');
+                const response = await fetch('/api/reports');
                 if (!response.ok) {
-                    console.error('Failed to load map data:', response.status);
+                    console.error('Failed to load reports:', response.status);
                     return;
                 }
 
