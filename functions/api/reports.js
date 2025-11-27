@@ -1,4 +1,17 @@
 // API endpoint to fetch all reports for the map
+
+// Handle OPTIONS for CORS preflight
+export async function onRequestOptions() {
+    return new Response(null, {
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+        }
+    });
+}
+
+// Handle GET requests
 export async function onRequestGet({ env }) {
     try {
         // Fetch all danger zones from trapper_blips
