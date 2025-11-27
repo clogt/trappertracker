@@ -149,32 +149,42 @@
                 <div class="gfm-embed mx-auto" data-url="https://www.gofundme.com/f/help-trappertracker-keep-pets-safe/widget/large?sharesheet=undefined&attribution_id=sl:54eac9e2-dec9-4210-8b86-cfb1fe3ddfad"></div><script defer src="https://www.gofundme.com/static/js/embed.js"></script>
             </div>
 
-            <!-- Instagram Sharing Section -->
+            <!-- Social Sharing Section -->
             <div class="mt-12 border-t pt-8 border-gray-300 dark:border-gray-600">
-                <h3 class="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-4">📱 Help Us Spread the Word on Instagram!</h3>
-                <p class="text-gray-700 dark:text-gray-300 mb-6">No money to donate? No problem! Sharing our mission on social media helps us reach more pet owners and save more pets. Click the button below to share our pre-written post on Instagram.</p>
+                <h3 class="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-4">📱 Help Us Spread the Word!</h3>
+                <p class="text-gray-700 dark:text-gray-300 mb-6">No money to donate? No problem! Sharing our mission on social media helps us reach more pet owners and save more pets. Click a button below to copy a pre-written post for your favorite social media platform.</p>
 
-                <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-6 rounded-lg shadow-lg">
+                <div class="bg-gradient-to-r from-blue-500 to-teal-500 p-6 rounded-lg shadow-lg">
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg">
                         <h4 class="text-xl font-bold text-gray-800 dark:text-white mb-4">📋 How It Works</h4>
                         <ol class="text-left list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2 mb-6">
-                            <li>Download the TrapperTracker banner image below</li>
-                            <li>Click "Share on Instagram" to copy the caption</li>
-                            <li>Open Instagram and create a new post</li>
-                            <li>Upload the banner image and paste the caption</li>
-                            <li>Post and tag <strong>#TrapperTracker</strong></li>
+                            <li>Download our banner image (great for Instagram and Facebook).</li>
+                            <li>Click a "Copy" button below to grab the caption for that platform.</li>
+                            <li>Open your social media app, create a new post, and paste the text!</li>
+                            <li>Post and tag <strong>#TrapperTracker</strong> to join the conversation.</li>
                         </ol>
 
-                        <a href="/assets/images/tt_banner.png" download="TrapperTracker-Banner.png" class="block w-full bg-blue-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition transform hover:scale-105 mb-3 text-center">
+                        <a href="/assets/images/tt_banner.png" download="TrapperTracker-Banner.png" class="block w-full bg-indigo-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:bg-indigo-700 transition transform hover:scale-105 mb-6 text-center">
                             📥 Download Banner Image
                         </a>
 
-                        <button id="shareInstagramBtn" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:from-purple-700 hover:to-pink-700 transition transform hover:scale-105 mb-4">
-                            📱 Copy Instagram Caption
-                        </button>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button data-platform="instagram" class="share-btn w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-5 rounded-lg shadow-lg hover:from-purple-700 hover:to-pink-700 transition transform hover:scale-105">
+                                📱 Copy for Instagram
+                            </button>
+                            <button data-platform="facebook" class="share-btn w-full bg-blue-700 text-white font-bold py-3 px-5 rounded-lg shadow-lg hover:bg-blue-800 transition transform hover:scale-105">
+                                👍 Copy for Facebook
+                            </button>
+                            <button data-platform="x" class="share-btn w-full bg-gray-900 text-white font-bold py-3 px-5 rounded-lg shadow-lg hover:bg-black transition transform hover:scale-105">
+                                𝕏 Copy for X (Twitter)
+                            </button>
+                            <button data-platform="nextdoor" class="share-btn w-full bg-green-600 text-white font-bold py-3 px-5 rounded-lg shadow-lg hover:bg-green-700 transition transform hover:scale-105">
+                                🏡 Copy for Nextdoor
+                            </button>
+                        </div>
 
-                        <div id="shareMessage" class="hidden text-green-600 dark:text-green-400 font-semibold text-center py-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                            ✓ Caption copied! Now open Instagram and paste it.
+                        <div id="shareMessage" class="hidden text-green-600 dark:text-green-400 font-semibold text-center py-2 mt-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                            ✓ Caption copied! Now open the app and paste it.
                         </div>
                     </div>
                 </div>
@@ -182,7 +192,7 @@
                 <!-- Preview of the caption -->
                 <div class="mt-6">
                     <button id="previewBtn" class="text-indigo-600 dark:text-indigo-400 hover:underline text-sm">
-                        👁️ Preview the Instagram caption
+                        👁️ Preview Captions
                     </button>
                     <div id="captionPreview" class="hidden mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-left text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono"></div>
                 </div>
@@ -197,8 +207,9 @@
     </footer>
 
     <script>
-        // Instagram caption text
-        const instagramCaption = `Every pet owner's worst nightmare: they're gone. The silence is deafening. The panic is real. Where do you even begin to look?
+        // Caption texts for different platforms
+        const captions = {
+            instagram: `Every pet owner's worst nightmare: they're gone. The silence is deafening. The panic is real. Where do you even begin to look?
 
 Scattered social media posts and lost flyers aren't enough. We need a lifeline.
 
@@ -210,7 +221,43 @@ Help us build a world where every pet is safe. Share this post. Spread the word.
 
 TrapperTracker is free and built by the community, but we need your help to grow and add new features like AI-powered pet matching. Support our mission by visiting **trappertracker.com/donate** (or click the link in our bio!).
 
-#TrapperTracker #PetSafety #LostPet #FoundPet #LostAndFoundPets #DogSafety #CatSafety #CommunityWatch #ProtectOurPets #BringThemHome #AnimalWelfare #TechForGood #GoFundMe #PetsAreFamily`;
+#TrapperTracker #PetSafety #LostPet #FoundPet #LostAndFoundPets #DogSafety #CatSafety #CommunityWatch #ProtectOurPets #BringThemHome #AnimalWelfare #TechForGood #GoFundMe #PetsAreFamily`,
+            facebook: `Our pets are family. The fear of them getting lost or hurt is a pain every pet owner understands. When they're gone, the frantic search on scattered social media groups and neighborhood streets is inefficient and heartbreaking.
+
+We believe there's a better way.
+
+Introducing TrapperTracker.com, a free, community-driven safety map that helps protect our pets. We provide real-time alerts on active pet trappers and a centralized, map-based hub for lost and found pets to reunite families faster.
+
+This isn't just an app; it's a community watch for our most vulnerable family members.
+
+Please help us spread the word! A simple share can help a lost pet find its way home. Visit TrapperTracker.com to see the map and learn how you can help. If you can, please consider supporting our mission to keep pets safe.
+
+#TrapperTracker #PetSafety #LostAndFoundPets #CommunitySafety #AnimalWelfare #ProtectOurPets #PetsAreFamily`,
+            x: `Lost pets, active trappers, and worried owners. The current system of scattered social media posts isn't working.
+
+We're building a solution: TrapperTracker.com.
+
+A free, real-time map to report and view pet dangers and lost & found animals.
+
+Help us protect our pets. Share this.
+
+🔗 TrapperTracker.com
+#TrapperTracker #PetSafety #LostPet #TechForGood`,
+            nextdoor: `Hello neighbors,
+
+Many of us know the fear and panic of a lost pet. Searching through various social media feeds can be overwhelming when time is critical.
+
+That's why I wanted to share a new, free resource for our community: TrapperTracker.com.
+
+It's a map-based website that lets us share and see real-time alerts about active pet trappers, as well as post and view reports of lost and found pets right here in our area. It’s a centralized place to help keep our beloved animal companions safe and bring them home faster if they wander off.
+
+The more of us who use it, the more effective it will be. Please take a moment to check it out and consider using it if you ever have a need.
+
+Let's work together to keep our neighborhood pets safe!
+
+Thank you,
+A concerned neighbor`
+        };
 
         // Mobile menu toggle
         document.addEventListener('DOMContentLoaded', () => {
@@ -232,29 +279,37 @@ TrapperTracker is free and built by the community, but we need your help to grow
                 });
             }
 
-            // Instagram share button
-            const shareBtn = document.getElementById('shareInstagramBtn');
+            // Social share buttons
+            const shareBtns = document.querySelectorAll('.share-btn');
             const shareMessage = document.getElementById('shareMessage');
 
-            if (shareBtn) {
-                shareBtn.addEventListener('click', async () => {
+            shareBtns.forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const platform = btn.dataset.platform;
+                    const caption = captions[platform];
+                    const originalText = btn.innerHTML;
+
                     try {
-                        await navigator.clipboard.writeText(instagramCaption);
+                        await navigator.clipboard.writeText(caption);
+                        
+                        // Show success message on the main message div
                         shareMessage.classList.remove('hidden');
-                        shareBtn.textContent = '✓ Caption Copied!';
-                        shareBtn.classList.add('bg-green-600');
+                        
+                        // Update button text and style
+                        btn.innerHTML = '✓ Copied!';
+                        btn.classList.add('bg-green-600');
 
                         setTimeout(() => {
                             shareMessage.classList.add('hidden');
-                            shareBtn.textContent = '📱 Share on Instagram';
-                            shareBtn.classList.remove('bg-green-600');
-                        }, 5000);
+                            btn.innerHTML = originalText;
+                            btn.classList.remove('bg-green-600');
+                        }, 3000);
                     } catch (err) {
                         console.error('Failed to copy:', err);
                         alert('Failed to copy to clipboard. Please try again.');
                     }
                 });
-            }
+            });
 
             // Preview button
             const previewBtn = document.getElementById('previewBtn');
@@ -263,12 +318,16 @@ TrapperTracker is free and built by the community, but we need your help to grow
             if (previewBtn) {
                 previewBtn.addEventListener('click', () => {
                     if (captionPreview.classList.contains('hidden')) {
-                        captionPreview.textContent = instagramCaption;
+                        let previewContent = '';
+                        for (const platform in captions) {
+                            previewContent += `<h3 class="text-lg font-bold mt-4 mb-2 capitalize">${platform}</h3><p>${captions[platform].replace(/\n/g, '<br>')}</p>`;
+                        }
+                        captionPreview.innerHTML = previewContent;
                         captionPreview.classList.remove('hidden');
-                        previewBtn.textContent = '👁️ Hide caption preview';
+                        previewBtn.textContent = '👁️ Hide Previews';
                     } else {
                         captionPreview.classList.add('hidden');
-                        previewBtn.textContent = '👁️ Preview the Instagram caption';
+                        previewBtn.textContent = '👁️ Preview Captions';
                     }
                 });
             }
