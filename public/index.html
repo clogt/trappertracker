@@ -62,6 +62,19 @@
             text-decoration: none;
         }
 
+        .user-indicator {
+            font-size: 13px;
+            color: #10b981;
+            padding: 6px 10px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 6px;
+            display: none;
+        }
+
+        .user-indicator.visible {
+            display: block;
+        }
+
         .menu-btn {
             font-size: 24px;
         }
@@ -304,6 +317,7 @@
         <button class="menu-btn" id="menuBtn">☰</button>
         <div class="header-title">TrapperTracker</div>
         <div class="header-right">
+            <span class="user-indicator" id="userIndicator"></span>
             <a href="/donate.html" class="support-link">Support</a>
         </div>
     </div>
@@ -411,6 +425,26 @@
         let map;
         let userMarker;
         let userLat, userLng;
+
+        // Check and display logged-in user
+        async function checkLoggedInUser() {
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const userIndicator = document.getElementById('userIndicator');
+                    if (data.email) {
+                        userIndicator.textContent = `👤 ${data.email}`;
+                        userIndicator.classList.add('visible');
+                    }
+                }
+            } catch (error) {
+                console.log('User not logged in');
+            }
+        }
 
         // Initialize map
         function initMap() {
@@ -714,7 +748,10 @@
         });
 
         // Initialize
-        window.addEventListener('load', initMap);
+        window.addEventListener('load', () => {
+            initMap();
+            checkLoggedInUser();
+        });
     </script>
 </body>
 </html>
