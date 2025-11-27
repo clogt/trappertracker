@@ -69,3 +69,27 @@ CREATE TABLE dangerous_animals (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (reported_by_user_id) REFERENCES users(user_id)
 );
+
+-- Table 6: error_reports (User Feedback & Bug Reports)
+CREATE TABLE error_reports (
+    report_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    description TEXT NOT NULL,
+    user_agent TEXT,
+    page_url TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table 7: pending_submissions (Extension submissions awaiting coordinates)
+CREATE TABLE IF NOT EXISTS pending_submissions (
+    submission_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    description TEXT NOT NULL,
+    source_url TEXT,
+    date_reported TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    completed INTEGER DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- Add source_url column to trapper_blips for tracking Facebook posts
+ALTER TABLE trapper_blips ADD COLUMN source_url TEXT;
