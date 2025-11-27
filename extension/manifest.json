@@ -14,7 +14,7 @@
     "https://trappertracker.com/*"
   ],
   "background": {
-    "service_worker": "scripts/background.js"
+    "scripts": ["scripts/background.js"]
   },
   "content_scripts": [
     {
