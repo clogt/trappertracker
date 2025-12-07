@@ -38,19 +38,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function checkAuth() {
         try {
-            const profileResponse = await fetch('/api/user/profile', {
+            // Try to load pending submissions directly - will fail if not authenticated
+            const testResponse = await fetch('/api/pending-submissions', {
                 credentials: 'include'
             });
 
-            if (!profileResponse.ok) {
+            if (!testResponse.ok) {
                 window.location.href = '/login.html';
                 return;
             }
 
-            const profile = await profileResponse.json();
+            // Get user email from localStorage or leave as "User"
             const userEmailText = document.getElementById('userEmailText');
             if (userEmailText) {
-                userEmailText.textContent = profile.email;
+                const storedEmail = localStorage.getItem('userEmail') || 'User';
+                userEmailText.textContent = storedEmail;
             }
 
             // Load pending submissions

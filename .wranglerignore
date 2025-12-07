@@ -4,5 +4,10 @@ node_modules/
 .claude/
 *.log
 *.md
+*.txt
 test/
 admin-app/
+core.*
+.dev.vars
+generate-admin-password.js
+migration-*.sql
