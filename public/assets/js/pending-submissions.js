@@ -48,8 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const profile = await profileResponse.json();
-            if (userEmail) {
-                userEmail.textContent = profile.email;
+            const userEmailText = document.getElementById('userEmailText');
+            if (userEmailText) {
+                userEmailText.textContent = profile.email;
             }
 
             // Load pending submissions
@@ -400,6 +401,104 @@ document.addEventListener('DOMContentLoaded', () => {
             document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             window.location.href = '/';
+        });
+    }
+
+    // Password Change Modal
+    const passwordChangeModal = document.getElementById('passwordChangeModal');
+    const changePasswordButton = document.getElementById('changePasswordButton');
+    const closePasswordModal = document.getElementById('closePasswordModal');
+    const cancelPasswordChange = document.getElementById('cancelPasswordChange');
+    const passwordChangeForm = document.getElementById('passwordChangeForm');
+    const passwordError = document.getElementById('passwordError');
+    const passwordSuccess = document.getElementById('passwordSuccess');
+
+    // Open password change modal
+    if (changePasswordButton) {
+        changePasswordButton.addEventListener('click', () => {
+            passwordChangeModal.classList.remove('hidden');
+            passwordChangeForm.reset();
+            passwordError.classList.add('hidden');
+            passwordSuccess.classList.add('hidden');
+        });
+    }
+
+    // Close password change modal
+    function closePasswordChangeModal() {
+        passwordChangeModal.classList.add('hidden');
+        passwordChangeForm.reset();
+        passwordError.classList.add('hidden');
+        passwordSuccess.classList.add('hidden');
+    }
+
+    if (closePasswordModal) {
+        closePasswordModal.addEventListener('click', closePasswordChangeModal);
+    }
+
+    if (cancelPasswordChange) {
+        cancelPasswordChange.addEventListener('click', closePasswordChangeModal);
+    }
+
+    // Handle password change form submission
+    if (passwordChangeForm) {
+        passwordChangeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // Hide previous messages
+            passwordError.classList.add('hidden');
+            passwordSuccess.classList.add('hidden');
+
+            // Validate passwords match
+            if (newPassword !== confirmPassword) {
+                passwordError.textContent = 'New passwords do not match';
+                passwordError.classList.remove('hidden');
+                return;
+            }
+
+            // Validate password length
+            if (newPassword.length < 8) {
+                passwordError.textContent = 'New password must be at least 8 characters';
+                passwordError.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        currentPassword,
+                        newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    passwordSuccess.textContent = 'Password changed successfully!';
+                    passwordSuccess.classList.remove('hidden');
+                    passwordChangeForm.reset();
+
+                    // Close modal after 2 seconds
+                    setTimeout(() => {
+                        closePasswordChangeModal();
+                    }, 2000);
+                } else {
+                    passwordError.textContent = data.error || 'Failed to change password';
+                    passwordError.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Password change error:', error);
+                passwordError.textContent = 'Network error. Please try again.';
+                passwordError.classList.remove('hidden');
+            }
         });
     }
 });

@@ -6,6 +6,7 @@ import { onRequestPost as handleAdminLogin } from "./api/admin-login/index.js";
 import { handleAdminRequest } from "./api/admin/index.js";
 import { handleExtensionSubmit } from "./api/extension-submit/index.js";
 import { handlePendingSubmissionsRequest } from "./api/pending-submissions/index.js";
+import { handleUserRequest } from "./api/user/index.js";
 
 function addSecurityHeaders(response) {
   const newResponse = new Response(response.body, response);
@@ -28,6 +29,8 @@ export default {
       response = await handleAdminLogin({ request, env });
     } else if (url.pathname.startsWith('/api/admin')) {
       response = await handleAdminRequest(request, env);
+    } else if (url.pathname.startsWith('/api/user')) {
+      response = await handleUserRequest(request, env);
     } else if (url.pathname.startsWith('/api/pending-submissions')) {
       response = await handlePendingSubmissionsRequest(request, env);
     } else if (url.pathname.startsWith('/api/extension-submit')) {
