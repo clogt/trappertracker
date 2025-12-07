@@ -34,27 +34,54 @@ function injectSubmitButton(postElement, matchedText) {
     // Facebook's structure varies, so we'll try multiple selectors
     console.log('TrapperTracker: Attempting to inject button into post');
 
-    const actionBar = postElement.querySelector('[role="toolbar"]') ||
-                     postElement.querySelector('[aria-label*="actions"]') ||
-                     postElement.querySelector('div[class*="action"]') ||
-                     postElement.querySelector('div[class*="footer"]');
+    // Try to find the Like/Comment/Share action buttons area
+    // Look for elements with aria-label="Like", "Comment", or "Share"
+    const likeButton = postElement.querySelector('[aria-label*="Like"]');
+    const commentButton = postElement.querySelector('[aria-label*="Comment"]');
+    const shareButton = postElement.querySelector('[aria-label*="Share"]');
+
+    // Get the parent container of these action buttons
+    let actionBar = null;
+    if (likeButton || commentButton || shareButton) {
+        const actionButton = likeButton || commentButton || shareButton;
+        // Go up to find the container div that holds all action buttons
+        actionBar = actionButton.closest('div[role="group"]') ||
+                   actionButton.parentElement?.parentElement ||
+                   actionButton.parentElement;
+    }
+
+    // Fallback selectors if aria-label approach doesn't work
+    if (!actionBar) {
+        actionBar = postElement.querySelector('[role="toolbar"]') ||
+                   postElement.querySelector('div[class*="action"]') ||
+                   postElement.querySelector('div[class*="footer"]');
+    }
 
     console.log('TrapperTracker: actionBar found:', !!actionBar);
 
     if (actionBar) {
         const buttonWrapper = document.createElement('div');
         buttonWrapper.className = 'trappertracker-button-wrapper';
+        buttonWrapper.style.display = 'inline-block';
+        buttonWrapper.style.marginLeft = '8px';
         buttonWrapper.appendChild(submitBtn);
         actionBar.appendChild(buttonWrapper);
         console.log('TrapperTracker: Submit button injected successfully');
     } else {
         console.warn('TrapperTracker: Could not find action bar for button injection');
-        // Fallback: append to the post element itself
+        // Fallback: Create a prominent banner below the post content
         const buttonWrapper = document.createElement('div');
-        buttonWrapper.className = 'trappertracker-button-wrapper';
-        buttonWrapper.style.marginTop = '10px';
+        buttonWrapper.className = 'trappertracker-button-wrapper-fallback';
+        buttonWrapper.style.cssText = 'margin: 12px 0; padding: 12px; background: #fff3cd; border: 2px solid #ff6b6b; border-radius: 8px; text-align: center;';
         buttonWrapper.appendChild(submitBtn);
-        postElement.appendChild(buttonWrapper);
+
+        // Try to insert after the post content but before comments
+        const postContent = postElement.querySelector('[data-ad-preview="message"]') || postElement.firstElementChild;
+        if (postContent && postContent.parentElement) {
+            postContent.parentElement.insertBefore(buttonWrapper, postContent.nextSibling);
+        } else {
+            postElement.appendChild(buttonWrapper);
+        }
         console.log('TrapperTracker: Submit button injected as fallback');
     }
 }
@@ -66,23 +93,51 @@ async function handleSubmission(postElement, matchedText) {
         submitBtn.disabled = true;
         submitBtn.textContent = '⏳ Extracting...';
 
-        // Extract post URL
-        const postLink = postElement.querySelector('a[href*="/posts/"], a[href*="/permalink/"]');
-        const sourceURL = postLink ? postLink.href : window.location.href;
+        // Extract post URL - try multiple selectors
+        let sourceURL = window.location.href;
+        const postLink = postElement.querySelector('a[href*="/posts/"]') ||
+                        postElement.querySelector('a[href*="/permalink/"]') ||
+                        postElement.querySelector('a[href*="/photo/"]') ||
+                        postElement.querySelector('a[aria-label*="ago"]') ||
+                        postElement.querySelector('a[role="link"][href*="facebook.com"]');
 
-        // Extract full post text
-        const textElements = postElement.querySelectorAll('[data-ad-preview="message"], [dir="auto"]');
-        let description = '';
-        textElements.forEach(el => {
-            const text = el.textContent.trim();
-            if (text.length > description.length) {
-                description = text;
-            }
-        });
+        if (postLink && postLink.href) {
+            sourceURL = postLink.href;
+        }
 
-        // Extract date (Facebook uses various formats)
-        const dateElement = postElement.querySelector('a[href*="/posts/"] abbr, a[href*="/permalink/"] span');
-        const dateReported = dateElement ? extractDate(dateElement) : new Date().toISOString().split('T')[0];
+        // Extract full post text - try multiple methods
+        let description = matchedText || ''; // Use the matched text as fallback
+
+        // Method 1: Look for post content div
+        const contentDiv = postElement.querySelector('[data-ad-preview="message"]') ||
+                          postElement.querySelector('[data-ad-comet-preview="message"]') ||
+                          postElement.querySelector('div[dir="auto"][style*="text-align"]');
+
+        if (contentDiv) {
+            description = contentDiv.textContent.trim();
+        } else {
+            // Method 2: Get all text from divs with dir="auto" and pick the longest
+            const textElements = postElement.querySelectorAll('div[dir="auto"]');
+            textElements.forEach(el => {
+                const text = el.textContent.trim();
+                if (text.length > 20 && text.length > description.length) {
+                    description = text;
+                }
+            });
+        }
+
+        // Extract date - try multiple selectors
+        const dateElement = postElement.querySelector('a[aria-label*="ago"]') ||
+                           postElement.querySelector('abbr') ||
+                           postElement.querySelector('a[href*="/posts/"]');
+
+        let dateReported = new Date().toISOString().split('T')[0];
+        if (dateElement) {
+            const ariaLabel = dateElement.getAttribute('aria-label');
+            const title = dateElement.getAttribute('title');
+            const text = dateElement.textContent;
+            dateReported = extractDate({ textContent: ariaLabel || title || text });
+        }
 
         // Package the data
         const postData = {

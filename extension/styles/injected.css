@@ -42,10 +42,42 @@
     background: #10b981;
 }
 
+/* Fallback wrapper styling */
+.trappertracker-button-wrapper-fallback {
+    margin: 12px 0;
+    padding: 12px;
+    background: #fff3cd;
+    border: 2px solid #ff6b6b;
+    border-radius: 8px;
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.trappertracker-button-wrapper-fallback .trappertracker-submit-btn {
+    font-size: 14px;
+    padding: 10px 20px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .trappertracker-submit-btn {
         padding: 6px 12px;
         font-size: 12px;
+    }
+
+    .trappertracker-button-wrapper-fallback .trappertracker-submit-btn {
+        font-size: 13px;
+        padding: 8px 16px;
     }
 }
