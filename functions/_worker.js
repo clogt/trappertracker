@@ -1,7 +1,11 @@
-import { handleMapDataRequest, handleReportRequest } from "./functions/api/report/index.js";
-import { handleRegisterRequest, handleLoginRequest } from "./functions/api/auth/index.js";
-import { handleMatchRequest } from "./functions/api/match/index.js";
-import { handleImageUpload } from "./functions/api/upload/index.js";
+import { handleMapDataRequest, handleReportRequest } from "./api/report/index.js";
+import { handleRegisterRequest, handleLoginRequest } from "./api/auth/index.js";
+import { handleMatchRequest } from "./api/match/index.js";
+import { handleImageUpload } from "./api/upload/index.js";
+import { onRequestPost as handleAdminLogin } from "./api/admin-login/index.js";
+import { handleAdminRequest } from "./api/admin/index.js";
+import { handleExtensionSubmit } from "./api/extension-submit/index.js";
+import { handlePendingSubmissionsRequest } from "./api/pending-submissions/index.js";
 
 function addSecurityHeaders(response) {
   const newResponse = new Response(response.body, response);
@@ -20,7 +24,15 @@ export default {
     let response;
 
     // Handle API routes
-    if (url.pathname.startsWith('/api/mapdata')) {
+    if (url.pathname.startsWith('/api/admin-login')) {
+      response = await handleAdminLogin({ request, env });
+    } else if (url.pathname.startsWith('/api/admin')) {
+      response = await handleAdminRequest(request, env);
+    } else if (url.pathname.startsWith('/api/pending-submissions')) {
+      response = await handlePendingSubmissionsRequest(request, env);
+    } else if (url.pathname.startsWith('/api/extension-submit')) {
+      response = await handleExtensionSubmit(request, env);
+    } else if (url.pathname.startsWith('/api/mapdata')) {
       response = await handleMapDataRequest(request, env);
     } else if (url.pathname.startsWith('/api/report')) {
       response = await handleReportRequest(request, env);

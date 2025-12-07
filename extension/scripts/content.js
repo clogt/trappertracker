@@ -32,15 +32,30 @@ function injectSubmitButton(postElement, matchedText) {
 
     // Find the best place to inject the button
     // Facebook's structure varies, so we'll try multiple selectors
-    const actionBar = postElement.querySelector('[role="article"] [role="toolbar"]') ||
-                     postElement.querySelector('[role="article"]');
+    console.log('TrapperTracker: Attempting to inject button into post');
+
+    const actionBar = postElement.querySelector('[role="toolbar"]') ||
+                     postElement.querySelector('[aria-label*="actions"]') ||
+                     postElement.querySelector('div[class*="action"]') ||
+                     postElement.querySelector('div[class*="footer"]');
+
+    console.log('TrapperTracker: actionBar found:', !!actionBar);
 
     if (actionBar) {
         const buttonWrapper = document.createElement('div');
         buttonWrapper.className = 'trappertracker-button-wrapper';
         buttonWrapper.appendChild(submitBtn);
         actionBar.appendChild(buttonWrapper);
-        console.log('TrapperTracker: Submit button injected');
+        console.log('TrapperTracker: Submit button injected successfully');
+    } else {
+        console.warn('TrapperTracker: Could not find action bar for button injection');
+        // Fallback: append to the post element itself
+        const buttonWrapper = document.createElement('div');
+        buttonWrapper.className = 'trappertracker-button-wrapper';
+        buttonWrapper.style.marginTop = '10px';
+        buttonWrapper.appendChild(submitBtn);
+        postElement.appendChild(buttonWrapper);
+        console.log('TrapperTracker: Submit button injected as fallback');
     }
 }
 
@@ -146,7 +161,7 @@ function extractDate(element) {
 function checkForKeywords(text) {
     const lowerText = text.toLowerCase();
     const matches = KEYWORDS.filter(keyword => lowerText.includes(keyword));
-    return matches.length >= 2; // Require at least 2 keyword matches
+    return matches.length >= 1; // Require at least 1 keyword match
 }
 
 // Process a single post element

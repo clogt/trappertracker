@@ -1,15 +1,12 @@
 // Get error reports for admin dashboard
+import { verifyAdminToken, unauthorizedResponse } from './auth-helper.js';
+
 export async function onRequestGet({ request, env }) {
     try {
         // Verify admin authentication
-        const cookies = request.headers.get('Cookie') || '';
-        const adminToken = cookies.split(';').find(c => c.trim().startsWith('admin_token='));
-
-        if (!adminToken) {
-            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' }
-            });
+        const adminPayload = await verifyAdminToken(request, env);
+        if (!adminPayload) {
+            return unauthorizedResponse();
         }
 
         // Get error reports from database

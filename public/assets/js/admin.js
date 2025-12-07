@@ -38,6 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Get admin data from response
+            const data = await response.json();
+
+            // Update admin username indicator
+            const adminUsernameElement = document.getElementById('adminUsername');
+            if (adminUsernameElement && data.username) {
+                adminUsernameElement.textContent = data.username;
+            }
+
             // User is authenticated as admin, load dashboard data
             loadDashboardStats();
             loadErrorReports();
@@ -170,8 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">${new Date(user.created_at).toLocaleDateString()}</td>
                                 <td class="px-4 py-3 text-sm">
                                     <div class="flex gap-2">
-                                        <button onclick="updateUserRole('${user.user_id}')" class="text-xs bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600">Update Role</button>
-                                        <button onclick="deleteUser('${user.user_id}', '${escapeJs(user.email)}')" class="text-xs bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Delete</button>
+                                        <button onclick="updateUserRole('${user.user_id}')" class="text-xs bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600 transition-colors font-medium">Update Role</button>
+                                        <button onclick="deleteUser('${user.user_id}', '${escapeJs(user.email)}')" class="text-xs bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors font-medium">Delete</button>
                                     </div>
                                 </td>
                             </tr>
@@ -243,27 +252,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 reportsList.innerHTML = `
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                            ${allReports.slice(0, 50).map(report => `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
-                                    <td class="px-4 py-2 text-sm">${report.type}</td>
-                                    <td class="px-4 py-2 text-sm">${escapeHtml(report.description || report.pet_name || 'N/A')}</td>
-                                    <td class="px-4 py-2 text-sm text-gray-500">${report.latitude?.toFixed(4)}, ${report.longitude?.toFixed(4)}</td>
-                                    <td class="px-4 py-2 text-sm text-gray-500">${new Date(report.created_at || report.report_timestamp).toLocaleDateString()}</td>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Description</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Location</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    ${allReports.length > 50 ? `<p class="mt-4 text-sm text-gray-500">Showing first 50 of ${allReports.length} reports</p>` : ''}
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                ${allReports.slice(0, 50).map(report => {
+                                    const reportId = report.blip_id || report.pet_id || report.found_pet_id || report.danger_id;
+                                    return `
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">#${reportId}</td>
+                                        <td class="px-4 py-3 text-sm">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                report.type === 'Danger Zone' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                                                report.type === 'Lost Pet' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                report.type === 'Found Pet' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                                'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                            }">
+                                                ${report.type}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">${escapeHtml(report.description || report.pet_name || 'N/A')}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">${report.latitude?.toFixed(4)}, ${report.longitude?.toFixed(4)}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">${new Date(report.created_at || report.report_timestamp).toLocaleDateString()}</td>
+                                        <td class="px-4 py-3 text-sm">
+                                            <button
+                                                onclick="deleteReport('${escapeJs(report.type)}', '${reportId}')"
+                                                class="text-xs bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors"
+                                            >
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ${allReports.length > 50 ? `<p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Showing first 50 of ${allReports.length} reports</p>` : ''}
                 `;
             } else {
                 reportsList.innerHTML = '<p class="text-red-500">Failed to load reports.</p>';
@@ -303,8 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Logout
     if (logoutButton) {
         logoutButton.addEventListener('click', () => {
-            // Clear any session data
-            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            // Clear admin session data
+            document.cookie = 'admin_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             window.location.href = '/admin-login.html';
         });
     }
@@ -360,6 +394,151 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Delete user error:', error);
+            displayMessage('Network error. Please try again.');
+        }
+    };
+
+    // Password Change Modal Logic
+    const passwordChangeModal = document.getElementById('passwordChangeModal');
+    const changePasswordButton = document.getElementById('changePasswordButton');
+    const closePasswordModal = document.getElementById('closePasswordModal');
+    const cancelPasswordChange = document.getElementById('cancelPasswordChange');
+    const passwordChangeForm = document.getElementById('passwordChangeForm');
+    const passwordError = document.getElementById('passwordError');
+    const passwordSuccess = document.getElementById('passwordSuccess');
+
+    // Open password change modal
+    if (changePasswordButton) {
+        changePasswordButton.addEventListener('click', () => {
+            passwordChangeModal.classList.remove('hidden');
+            passwordError.classList.add('hidden');
+            passwordSuccess.classList.add('hidden');
+            passwordChangeForm.reset();
+        });
+    }
+
+    // Close modal functions
+    const closePasswordModalFunc = () => {
+        passwordChangeModal.classList.add('hidden');
+        passwordChangeForm.reset();
+        passwordError.classList.add('hidden');
+        passwordSuccess.classList.add('hidden');
+    };
+
+    if (closePasswordModal) {
+        closePasswordModal.addEventListener('click', closePasswordModalFunc);
+    }
+
+    if (cancelPasswordChange) {
+        cancelPasswordChange.addEventListener('click', closePasswordModalFunc);
+    }
+
+    // Close modal on outside click
+    if (passwordChangeModal) {
+        passwordChangeModal.addEventListener('click', (e) => {
+            if (e.target === passwordChangeModal) {
+                closePasswordModalFunc();
+            }
+        });
+    }
+
+    // Handle password change form submission
+    if (passwordChangeForm) {
+        passwordChangeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            passwordError.classList.add('hidden');
+            passwordSuccess.classList.add('hidden');
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // Validate passwords match
+            if (newPassword !== confirmPassword) {
+                passwordError.textContent = 'New passwords do not match!';
+                passwordError.classList.remove('hidden');
+                return;
+            }
+
+            // Validate new password length
+            if (newPassword.length < 12) {
+                passwordError.textContent = 'New password must be at least 12 characters long.';
+                passwordError.classList.remove('hidden');
+                return;
+            }
+
+            // Disable submit button during request
+            const submitButton = document.getElementById('submitPasswordChange');
+            const originalText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Changing...';
+
+            try {
+                const response = await fetch('/api/admin/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        currentPassword,
+                        newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    passwordSuccess.textContent = `Password changed successfully! New hash: ${data.newPasswordHash}`;
+                    passwordSuccess.classList.remove('hidden');
+                    passwordChangeForm.reset();
+
+                    // Show detailed instructions
+                    displayMessage('Password changed! Check modal for new hash to update ADMIN_PASSWORD_HASH environment variable.', false);
+
+                    // Auto-close modal after 15 seconds
+                    setTimeout(() => {
+                        closePasswordModalFunc();
+                    }, 15000);
+                } else {
+                    passwordError.textContent = data.error || 'Failed to change password';
+                    passwordError.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Password change error:', error);
+                passwordError.textContent = 'Network error. Please try again.';
+                passwordError.classList.remove('hidden');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
+            }
+        });
+    }
+
+    // Delete report function - make it global
+    window.deleteReport = async function(reportType, reportId) {
+        if (!confirm(`Are you sure you want to delete this ${reportType} report (#${reportId})?\n\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/delete-report', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ reportType, reportId })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                displayMessage(`Report deleted successfully: ${reportType} #${reportId}`, false);
+                loadAllReports(); // Reload reports list
+                loadDashboardStats(); // Update stats
+            } else {
+                const error = await response.json();
+                displayMessage(error.error || 'Failed to delete report.');
+            }
+        } catch (error) {
+            console.error('Delete report error:', error);
             displayMessage('Network error. Please try again.');
         }
     };

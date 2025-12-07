@@ -19,3 +19,18 @@ admin-app/*.png
 
 # Admin files (keep secure, not in public repo)
 admin-app/
+
+# Core dumps
+core.*
+
+# Claude Code directory
+.claude/
+
+# Development documentation (keep local)
+*_SETUP.md
+*_TESTING_*.md
+*_SUMMARY.txt
+*_DIAGRAM.txt
+QUICK_TEST.md
+generate-admin-password.js
+migration-*.sql

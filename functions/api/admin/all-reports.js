@@ -1,35 +1,49 @@
 // Get all reports for admin dashboard
+import { verifyAdminToken, unauthorizedResponse } from './auth-helper.js';
+
 export async function onRequestGet({ request, env }) {
     try {
         // Verify admin authentication
-        const cookies = request.headers.get('Cookie') || '';
-        const adminToken = cookies.split(';').find(c => c.trim().startsWith('admin_token='));
-
-        if (!adminToken) {
-            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' }
-            });
+        const adminPayload = await verifyAdminToken(request, env);
+        if (!adminPayload) {
+            return unauthorizedResponse();
         }
 
-        // Get all reports from database
-        const { results } = await env.DB.prepare(`
-            SELECT
-                blip_id,
-                report_type,
-                latitude,
-                longitude,
-                description,
-                street_address,
-                report_timestamp,
-                reported_by_user_id,
-                source
+        // Get all reports from different tables
+        const trappers = await env.DB.prepare(`
+            SELECT blip_id, latitude, longitude, description, report_timestamp, created_at
             FROM trapper_blips
             ORDER BY report_timestamp DESC
-            LIMIT 200
+            LIMIT 50
         `).all();
 
-        return new Response(JSON.stringify(results), {
+        const lostPets = await env.DB.prepare(`
+            SELECT pet_id, pet_name, latitude, longitude, description, time_lost, created_at
+            FROM lost_pets
+            ORDER BY created_at DESC
+            LIMIT 50
+        `).all();
+
+        const foundPets = await env.DB.prepare(`
+            SELECT found_pet_id, species_breed, latitude, longitude, description, time_found, created_at
+            FROM found_pets
+            ORDER BY created_at DESC
+            LIMIT 50
+        `).all();
+
+        const dangerousAnimals = await env.DB.prepare(`
+            SELECT danger_id, animal_type, latitude, longitude, description, report_timestamp, created_at
+            FROM dangerous_animals
+            ORDER BY report_timestamp DESC
+            LIMIT 50
+        `).all();
+
+        return new Response(JSON.stringify({
+            trappers: trappers.results || [],
+            lost_pets: lostPets.results || [],
+            found_pets: foundPets.results || [],
+            dangerous_animals: dangerousAnimals.results || []
+        }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });

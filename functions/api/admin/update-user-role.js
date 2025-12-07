@@ -1,19 +1,17 @@
 // Update user role
+import { verifyAdminToken, unauthorizedResponse } from './auth-helper.js';
+
 export async function onRequestPost({ request, env }) {
     try {
         // Verify admin authentication
-        const cookies = request.headers.get('Cookie') || '';
-        const adminToken = cookies.split(';').find(c => c.trim().startsWith('admin_token='));
-
-        if (!adminToken) {
-            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' }
-            });
+        const adminPayload = await verifyAdminToken(request, env);
+        if (!adminPayload) {
+            return unauthorizedResponse();
         }
 
         const { userId, role } = await request.json();
 
+        // Input validation
         if (!userId || !role) {
             return new Response(JSON.stringify({ error: 'Missing userId or role' }), {
                 status: 400,
@@ -21,16 +19,36 @@ export async function onRequestPost({ request, env }) {
             });
         }
 
-        // Validate role
-        const validRoles = ['user', 'enforcement', 'admin'];
-        if (!validRoles.includes(role)) {
-            return new Response(JSON.stringify({ error: 'Invalid role' }), {
+        // Validate userId format
+        if (typeof userId !== 'string' || userId.length > 100 || userId.length < 1) {
+            return new Response(JSON.stringify({ error: 'Invalid userId format' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
 
-        // Update user role
+        // Validate role with whitelist
+        const validRoles = ['user', 'enforcement', 'admin'];
+        if (!validRoles.includes(role)) {
+            return new Response(JSON.stringify({ error: 'Invalid role. Must be: user, enforcement, or admin' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Check if user exists before update
+        const userExists = await env.DB.prepare(
+            'SELECT user_id FROM users WHERE user_id = ?'
+        ).bind(userId).first();
+
+        if (!userExists) {
+            return new Response(JSON.stringify({ error: 'User not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Update user role using parameterized query (prevents SQL injection)
         await env.DB.prepare(`
             UPDATE users
             SET role = ?

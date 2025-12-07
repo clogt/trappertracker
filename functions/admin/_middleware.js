@@ -36,7 +36,17 @@ export async function onRequest(context) {
   // Check credentials (default: admin/admin)
   // In production, this should check against encrypted credentials in D1
   const validUsername = env.ADMIN_USERNAME || 'admin';
-  const validPassword = env.ADMIN_PASSWORD || 'admin';
+  const validPassword = env.ADMIN_PASSWORD;
+
+  // Fail secure - if password not set, deny access
+  if (!validPassword) {
+    return new Response('Server configuration error', {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/plain'
+      }
+    });
+  }
 
   if (username !== validUsername || password !== validPassword) {
     return new Response('Invalid credentials', {

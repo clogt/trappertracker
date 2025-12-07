@@ -4,7 +4,7 @@
 console.log('TrapperTracker Extension: Background script loaded');
 
 // Constants
-const TRAPPERTRACKER_DOMAIN = 'https://trappertracker.pages.dev';
+const TRAPPERTRACKER_DOMAIN = 'https://trappertracker.com';
 const API_ENDPOINT = `${TRAPPERTRACKER_DOMAIN}/api/extension-submit`;
 const RETRY_ALARM_NAME = 'trappertracker-retry';
 const MAX_RETRIES = 5;
@@ -177,7 +177,7 @@ async function attemptSubmission(submission) {
 async function getSessionCookie() {
     return new Promise((resolve) => {
         chrome.cookies.getAll({
-            domain: 'trappertracker.pages.dev'
+            domain: 'trappertracker.com'
         }, (cookies) => {
             // Look for session cookie
             const sessionCookie = cookies.find(c => c.name.includes('session') || c.name.includes('auth'));

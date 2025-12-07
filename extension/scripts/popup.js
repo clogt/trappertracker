@@ -39,5 +39,5 @@ document.getElementById('retryBtn').addEventListener('click', () => {
 
 // Open TrapperTracker button
 document.getElementById('openTrackerBtn').addEventListener('click', () => {
-    chrome.tabs.create({ url: 'https://trappertracker.pages.dev' });
+    chrome.tabs.create({ url: 'https://trappertracker.com' });
 });

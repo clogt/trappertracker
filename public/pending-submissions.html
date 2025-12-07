@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Submissions - TrapperTracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200">
+    <nav class="bg-white dark:bg-gray-800 shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-bold text-indigo-600 dark:text-indigo-400">TrapperTracker</a>
+                    <span class="ml-4 text-sm text-gray-600 dark:text-gray-400">Pending Submissions</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="userEmail" class="text-sm text-gray-600 dark:text-gray-400"></span>
+                    <a href="/dashboard.html" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Dashboard</a>
+                    <button id="logoutButton" class="text-sm bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-4 max-w-7xl">
+        <div id="page-message" class="text-center text-sm mb-4 hidden"></div>
+
+        <!-- Pending Submissions Section -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold">Pending Submissions from Browser Extension</h2>
+                <a href="/" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm">+ New Report</a>
+            </div>
+
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Complete these submissions by adding location coordinates. These reports were submitted from the browser extension without location data.
+            </p>
+
+            <!-- Submissions Table -->
+            <div id="submissionsList" class="space-y-4">
+                <p class="text-gray-500">Loading pending submissions...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Location Modal -->
+    <div id="addLocationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Add Location to Complete Submission</h3>
+                <button id="closeLocationModal" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-2xl">×</button>
+            </div>
+
+            <input type="hidden" id="selectedSubmissionId">
+
+            <!-- Submission Details -->
+            <div id="submissionDetails" class="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4">
+                <p class="text-sm"><strong>Description:</strong> <span id="detailDescription"></span></p>
+                <p class="text-sm"><strong>Source URL:</strong> <a id="detailSourceURL" href="#" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline"></a></p>
+                <p class="text-sm"><strong>Date Reported:</strong> <span id="detailDateReported"></span></p>
+            </div>
+
+            <!-- Address Search -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Search for Address or Location</label>
+                <div class="flex space-x-2">
+                    <input type="text" id="addressSearch" placeholder="Enter city, address, or ZIP code..." class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700">
+                    <button id="searchAddressBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Search</button>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Click on the map to select the exact location:</p>
+                <div id="locationMap" class="w-full h-96 rounded-md border border-gray-300 dark:border-gray-600"></div>
+            </div>
+
+            <!-- Selected Coordinates Display -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Selected Coordinates</label>
+                <div class="flex space-x-2">
+                    <input type="text" id="selectedLat" placeholder="Latitude" readonly class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-600">
+                    <input type="text" id="selectedLng" placeholder="Longitude" readonly class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-600">
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex space-x-2">
+                <button id="completeSubmissionBtn" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700" disabled>Complete Submission</button>
+                <button id="cancelLocationBtn" class="flex-1 bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-1/3 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div class="text-center">
+                <h3 class="text-lg font-semibold mb-4">Delete Pending Submission?</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">This action cannot be undone.</p>
+                <div class="flex space-x-2">
+                    <button id="confirmDelete" class="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Delete</button>
+                    <button id="cancelDelete" class="flex-1 bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/pending-submissions.js"></script>
+</body>
+</html>

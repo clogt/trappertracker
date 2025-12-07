@@ -16,15 +16,48 @@ const sanitizeHTML = (str) => {
     });
 };
 
+// Get allowed CORS origin based on request
+function getAllowedOrigin(request) {
+    const origin = request.headers.get('Origin');
+
+    // Allow requests from:
+    // 1. trappertracker.com domains (production)
+    // 2. trappertracker.pages.dev (staging)
+    // 3. Browser extension origins (chrome-extension://, moz-extension://)
+    const allowedOrigins = [
+        'https://trappertracker.com',
+        'https://www.trappertracker.com',
+        'https://trappertracker.pages.dev'
+    ];
+
+    // Check if origin is in allowed list
+    if (origin && allowedOrigins.includes(origin)) {
+        return origin;
+    }
+
+    // Allow browser extensions (they have chrome-extension:// or moz-extension:// protocols)
+    if (origin && (origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://'))) {
+        return origin;
+    }
+
+    // Default to trappertracker.com if no origin or not allowed
+    return 'https://trappertracker.com';
+}
+
+// Get CORS headers
+function getCorsHeaders(request) {
+    return {
+        'Access-Control-Allow-Origin': getAllowedOrigin(request),
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Cookie'
+    };
+}
+
 // Handle OPTIONS for CORS preflight
-export async function onRequestOptions() {
+export async function onRequestOptions(context) {
     return new Response(null, {
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Cookie',
-            'Access-Control-Allow-Credentials': 'true'
-        }
+        headers: getCorsHeaders(context.request)
     });
 }
 
@@ -40,8 +73,7 @@ export async function onRequestPost(context) {
                 status: 401,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Credentials': 'true'
+                    ...getCorsHeaders(request)
                 }
             });
         }
@@ -107,8 +139,7 @@ export async function onRequestPost(context) {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Credentials': 'true'
+                    ...getCorsHeaders(request)
                 }
             });
         }
@@ -138,8 +169,7 @@ export async function onRequestPost(context) {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Credentials': 'true'
+                ...getCorsHeaders(request)
             }
         });
 

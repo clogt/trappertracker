@@ -1,19 +1,17 @@
 // Delete user
-export async function onRequestPost({ request, env }) {
+import { verifyAdminToken, unauthorizedResponse } from './auth-helper.js';
+
+export async function onRequestDelete({ request, env }) {
     try {
         // Verify admin authentication
-        const cookies = request.headers.get('Cookie') || '';
-        const adminToken = cookies.split(';').find(c => c.trim().startsWith('admin_token='));
-
-        if (!adminToken) {
-            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' }
-            });
+        const adminPayload = await verifyAdminToken(request, env);
+        if (!adminPayload) {
+            return unauthorizedResponse();
         }
 
         const { userId } = await request.json();
 
+        // Input validation
         if (!userId) {
             return new Response(JSON.stringify({ error: 'Missing userId' }), {
                 status: 400,
@@ -21,7 +19,27 @@ export async function onRequestPost({ request, env }) {
             });
         }
 
-        // Delete user
+        // Validate userId format (should be UUID or alphanumeric)
+        if (typeof userId !== 'string' || userId.length > 100 || userId.length < 1) {
+            return new Response(JSON.stringify({ error: 'Invalid userId format' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Check if user exists before deletion
+        const userExists = await env.DB.prepare(
+            'SELECT user_id FROM users WHERE user_id = ?'
+        ).bind(userId).first();
+
+        if (!userExists) {
+            return new Response(JSON.stringify({ error: 'User not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Delete user - CASCADE will handle related records if configured
         await env.DB.prepare(`
             DELETE FROM users
             WHERE user_id = ?
