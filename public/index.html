@@ -992,10 +992,16 @@
         async function loadDangerZones() {
             try {
                 const response = await fetch('/api/reports');
-                if (!response.ok) return;
+                if (!response.ok) {
+                    console.error('Failed to fetch reports:', response.status);
+                    return;
+                }
 
                 const data = await response.json();
+                console.log('Loaded reports from API:', data.length);
+
                 allDangerZones = data.filter(r => r.report_type === 'Danger Zone');
+                console.log('Filtered danger zones:', allDangerZones.length);
 
                 // Clear existing markers
                 markerClusterGroup.clearLayers();
@@ -1024,6 +1030,20 @@
 
                     markerClusterGroup.addLayer(marker);
                 });
+
+                console.log('Added', allDangerZones.length, 'markers to cluster group');
+                console.log('Total layers in cluster group:', markerClusterGroup.getLayers().length);
+
+                // If geolocation hasn't positioned the map yet and we have markers, fit bounds to show all markers
+                if (allDangerZones.length > 0 && !userMarker) {
+                    setTimeout(() => {
+                        if (!userMarker && markerClusterGroup.getLayers().length > 0) {
+                            const bounds = markerClusterGroup.getBounds();
+                            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+                            console.log('Fitted map to show all markers');
+                        }
+                    }, 1000);
+                }
 
                 // Update report list after loading
                 updateReportList();
