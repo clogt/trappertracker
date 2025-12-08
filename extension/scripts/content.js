@@ -141,7 +141,7 @@ async function handleSubmission(postElement, matchedText) {
 
         // Package the data
         const postData = {
-            description: description.substring(0, 1000), // Limit to 1000 chars
+            description: description.substring(0, 2000), // Increased from 1000 to 2000 chars
             sourceURL: sourceURL,
             dateReported: dateReported,
             extractedAt: new Date().toISOString()
@@ -162,15 +162,21 @@ async function handleSubmission(postElement, matchedText) {
             }
 
             if (response && response.success) {
-                submitBtn.textContent = '✓ Queued';
+                submitBtn.textContent = '✓ Submitted';
                 submitBtn.classList.add('submitted');
-                setTimeout(() => {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '⚠️ Submit to TrapperTracker';
-                }, 3000);
+                // Permanently disable - don't re-enable
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.6';
+            } else if (response && response.isDuplicate) {
+                submitBtn.textContent = '✓ Already Submitted';
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.6';
             } else {
                 submitBtn.textContent = '❌ Failed';
-                submitBtn.disabled = false;
+                // Only re-enable on actual failure
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                }, 5000);
             }
         });
 
@@ -189,18 +195,70 @@ function extractDate(element) {
     const text = element.textContent || element.getAttribute('title') || '';
     const today = new Date();
 
-    // Handle relative dates
-    if (text.includes('min') || text.includes('hour') || text.includes('hrs')) {
+    // Handle relative dates - minutes and hours
+    if (text.includes('min') || text.includes('hour') || text.includes('hrs') || text.includes('hr')) {
         return today.toISOString().split('T')[0];
     }
 
-    if (text.includes('yesterday')) {
+    // Handle "yesterday"
+    if (text.toLowerCase().includes('yesterday')) {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
         return yesterday.toISOString().split('T')[0];
     }
 
-    // Try to parse absolute dates
+    // Handle "X days ago" or "X d" format
+    const daysMatch = text.match(/(\d+)\s*(day|days|d)\s*ago/i);
+    if (daysMatch) {
+        const daysAgo = parseInt(daysMatch[1]);
+        const date = new Date(today);
+        date.setDate(date.getDate() - daysAgo);
+        return date.toISOString().split('T')[0];
+    }
+
+    // Handle "X weeks ago" or "X w" format
+    const weeksMatch = text.match(/(\d+)\s*(week|weeks|w)\s*ago/i);
+    if (weeksMatch) {
+        const weeksAgo = parseInt(weeksMatch[1]);
+        const date = new Date(today);
+        date.setDate(date.getDate() - (weeksAgo * 7));
+        return date.toISOString().split('T')[0];
+    }
+
+    // Handle "X months ago" format
+    const monthsMatch = text.match(/(\d+)\s*(month|months|mo)\s*ago/i);
+    if (monthsMatch) {
+        const monthsAgo = parseInt(monthsMatch[1]);
+        const date = new Date(today);
+        date.setMonth(date.getMonth() - monthsAgo);
+        return date.toISOString().split('T')[0];
+    }
+
+    // Handle month name formats: "December 1" or "Dec 1"
+    const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                        'july', 'august', 'september', 'october', 'november', 'december'];
+    const monthAbbr = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+                       'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+    for (let i = 0; i < monthNames.length; i++) {
+        const monthPattern = new RegExp(`(${monthNames[i]}|${monthAbbr[i]})\\s+(\\d{1,2})`, 'i');
+        const monthMatch = text.match(monthPattern);
+        if (monthMatch) {
+            const day = parseInt(monthMatch[2]);
+            const month = i + 1;
+            let year = today.getFullYear();
+
+            // If the date is in the future, assume it's from last year
+            const parsedDate = new Date(year, month - 1, day);
+            if (parsedDate > today) {
+                year--;
+            }
+
+            return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        }
+    }
+
+    // Try to parse MM/DD/YYYY format
     const dateMatch = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
     if (dateMatch) {
         const [, month, day, year] = dateMatch;

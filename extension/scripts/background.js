@@ -7,8 +7,9 @@ console.log('TrapperTracker Extension: Background script loaded');
 const TRAPPERTRACKER_DOMAIN = 'https://trappertracker.com';
 const API_ENDPOINT = `${TRAPPERTRACKER_DOMAIN}/api/extension-submit`;
 const RETRY_ALARM_NAME = 'trappertracker-retry';
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 10; // Increased from 5 for better resilience
 const INITIAL_BACKOFF = 1000; // 1 second
+const KEEPALIVE_INTERVAL = 20000; // 20 seconds - keep service worker alive
 
 // Initialize storage
 chrome.runtime.onInstalled.addListener(() => {
@@ -49,6 +50,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Handle new submission from content script
 async function handleNewSubmission(postData) {
     try {
+        // Check for duplicate sourceURL in queue
+        const queue = await getQueue();
+        const duplicate = queue.find(s => s.sourceURL === postData.sourceURL && s.status !== 'failed');
+
+        if (duplicate) {
+            console.log('TrapperTracker: Duplicate submission detected, skipping:', postData.sourceURL);
+            return { success: false, error: 'Duplicate submission', isDuplicate: true };
+        }
+
         // Add to queue with metadata
         const submission = {
             id: generateId(),
@@ -62,6 +72,7 @@ async function handleNewSubmission(postData) {
         };
 
         await addToQueue(submission);
+        await updateBadge(); // Update badge count
 
         // Try to submit immediately
         await processQueue();
@@ -151,10 +162,18 @@ async function attemptSubmission(submission) {
             submission.status = 'completed';
             await updateQueue(submission);
             updateStats('success');
+            await updateBadge();
+
+            // Show success notification
+            showNotification('Success!', 'Report submitted to TrapperTracker', 'success');
         } else if (response.status === 401) {
             console.warn('TrapperTracker: Authentication failed');
             submission.status = 'auth_required';
             await updateQueue(submission);
+            await updateBadge();
+
+            // Show auth notification
+            showNotification('Authentication Required', 'Please log in to TrapperTracker', 'warning');
         } else {
             throw new Error(`API returned ${response.status}`);
         }
@@ -271,13 +290,73 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Show browser notification
+function showNotification(title, message, type = 'info') {
+    const iconMap = {
+        success: '/icons/icon48.png',
+        warning: '/icons/icon48.png',
+        error: '/icons/icon48.png',
+        info: '/icons/icon48.png'
+    };
+
+    chrome.notifications.create({
+        type: 'basic',
+        iconUrl: iconMap[type] || iconMap.info,
+        title: `TrapperTracker: ${title}`,
+        message: message,
+        priority: type === 'error' ? 2 : 1
+    });
+}
+
+// Update badge with pending count
+async function updateBadge() {
+    const queue = await getQueue();
+    const pendingCount = queue.filter(s => s.status === 'pending' || s.status === 'auth_required').length;
+
+    if (pendingCount > 0) {
+        chrome.action.setBadgeText({ text: pendingCount.toString() });
+        chrome.action.setBadgeBackgroundColor({ color: '#ff0000' });
+    } else {
+        chrome.action.setBadgeText({ text: '' });
+    }
+}
+
+// Service worker keepalive mechanism
+let keepAliveInterval;
+
+function startKeepalive() {
+    if (keepAliveInterval) return;
+
+    keepAliveInterval = setInterval(() => {
+        // Ping to keep service worker alive
+        chrome.storage.local.get(['stats'], () => {
+            // This operation keeps the service worker active
+        });
+    }, KEEPALIVE_INTERVAL);
+
+    console.log('TrapperTracker: Keepalive started');
+}
+
+function stopKeepalive() {
+    if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+        console.log('TrapperTracker: Keepalive stopped');
+    }
+}
+
+// Start keepalive on startup
+startKeepalive();
+
 // Process queue on startup
 processQueue();
+updateBadge();
 
 // Set up periodic queue processing (every 5 minutes)
 chrome.alarms.create('periodic-queue-check', { periodInMinutes: 5 });
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'periodic-queue-check') {
         processQueue();
+        updateBadge();
     }
 });
