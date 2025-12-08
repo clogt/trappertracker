@@ -278,6 +278,174 @@
             font-weight: bold;
         }
 
+        /* Share Modal */
+        .share-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            backdrop-filter: blur(4px);
+        }
+
+        .share-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            z-index: 2001;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .share-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .share-modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .share-modal-close {
+            background: none;
+            border: none;
+            font-size: 32px;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .share-modal-close:hover {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .share-modal-body {
+            padding: 24px;
+        }
+
+        .share-report-preview {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .share-platform-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .share-platform-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .share-platform-btn:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .share-platform-btn .btn-icon {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .share-platform-btn .btn-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+
+        .share-platform-btn .btn-subtitle {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .facebook-btn:hover {
+            border-color: #1877f2;
+            background: #f0f7ff;
+        }
+
+        .nextdoor-btn:hover {
+            border-color: #00b246;
+            background: #f0fdf4;
+        }
+
+        .copy-btn:hover {
+            border-color: #8b5cf6;
+            background: #faf5ff;
+        }
+
+        .email-btn:hover {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .share-preview-section {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .share-preview-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 12px;
+        }
+
+        .share-preview-content {
+            background: white;
+            border-radius: 6px;
+            padding: 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #1f2937;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
         /* Mobile Adjustments */
         @media (max-width: 768px) {
             .report-list-panel {
@@ -296,6 +464,15 @@
             .panel-toggle-btn {
                 right: 16px;
                 top: 140px;
+            }
+
+            .share-platform-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .share-modal {
+                width: 95%;
+                max-height: 90vh;
             }
         }
 
@@ -647,6 +824,62 @@
         </div>
     </div>
 
+    <!-- Social Share Modal -->
+    <div class="share-modal-backdrop" id="shareModalBackdrop" style="display: none;"></div>
+    <div class="share-modal" id="shareModal" style="display: none;">
+        <div class="share-modal-header">
+            <h2 class="share-modal-title">📤 Share Danger Zone Alert</h2>
+            <button class="share-modal-close" id="shareModalClose">×</button>
+        </div>
+
+        <div class="share-modal-body">
+            <div class="share-report-preview" id="shareReportPreview">
+                <!-- Report preview will be inserted here -->
+            </div>
+
+            <div class="share-platform-buttons">
+                <button class="share-platform-btn facebook-btn" id="shareFacebook">
+                    <span class="btn-icon">📘</span>
+                    <div>
+                        <div class="btn-title">Facebook</div>
+                        <div class="btn-subtitle">Group & Timeline optimized</div>
+                    </div>
+                </button>
+
+                <button class="share-platform-btn nextdoor-btn" id="shareNextdoor">
+                    <span class="btn-icon">🏘️</span>
+                    <div>
+                        <div class="btn-title">Nextdoor</div>
+                        <div class="btn-subtitle">Neighborhood format</div>
+                    </div>
+                </button>
+
+                <button class="share-platform-btn copy-btn" id="shareCopyLink">
+                    <span class="btn-icon">🔗</span>
+                    <div>
+                        <div class="btn-title">Copy Link</div>
+                        <div class="btn-subtitle">Share anywhere</div>
+                    </div>
+                </button>
+
+                <button class="share-platform-btn email-btn" id="shareEmail">
+                    <span class="btn-icon">📧</span>
+                    <div>
+                        <div class="btn-title">Email</div>
+                        <div class="btn-subtitle">Send to friends</div>
+                    </div>
+                </button>
+            </div>
+
+            <div class="share-preview-section">
+                <div class="share-preview-header">Preview:</div>
+                <div class="share-preview-content" id="sharePreviewContent">
+                    <p style="color: #6b7280; text-align: center; padding: 20px;">Select a platform to preview the message</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let map;
         let userMarker;
@@ -907,10 +1140,193 @@
             map.setView([lat, lng], 16, { animate: true });
         }
 
-        // Share report (placeholder - will be implemented later)
+        // Share report - open modal with sharing options
+        let currentShareReport = null;
+
         function shareReport(reportId) {
-            alert(`Share functionality for report #${reportId} coming soon!`);
-            // TODO: Implement social media share dialog
+            // Find the report data
+            const report = allDangerZones.find(r => r.report_id === reportId);
+            if (!report) {
+                console.error('Report not found:', reportId);
+                return;
+            }
+
+            currentShareReport = report;
+
+            // Show modal
+            document.getElementById('shareModalBackdrop').style.display = 'block';
+            document.getElementById('shareModal').style.display = 'block';
+
+            // Populate report preview
+            const previewEl = document.getElementById('shareReportPreview');
+            previewEl.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 8px;">Report #${report.report_id}</div>
+                <div style="font-size: 13px; color: #6b7280; margin-bottom: 4px;">
+                    📍 ${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}
+                </div>
+                <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
+                    📅 ${formatDate(report.report_timestamp)}
+                </div>
+                <div style="font-size: 14px; color: #1f2937;">
+                    ${report.description || 'No description provided'}
+                </div>
+            `;
+
+            // Setup share button handlers
+            setupShareHandlers();
+        }
+
+        // Setup share modal handlers
+        function setupShareHandlers() {
+            const modal = document.getElementById('shareModal');
+            const backdrop = document.getElementById('shareModalBackdrop');
+            const closeBtn = document.getElementById('shareModalClose');
+            const previewContent = document.getElementById('sharePreviewContent');
+
+            // Close modal
+            const closeModal = () => {
+                modal.style.display = 'none';
+                backdrop.style.display = 'none';
+                currentShareReport = null;
+            };
+
+            closeBtn.onclick = closeModal;
+            backdrop.onclick = closeModal;
+
+            // Facebook share
+            document.getElementById('shareFacebook').onclick = () => {
+                const text = generateFacebookPost(currentShareReport);
+                previewContent.innerHTML = `<div style="white-space: pre-wrap;">${text}</div>`;
+
+                // After showing preview, open Facebook share
+                setTimeout(() => {
+                    const shareUrl = generateShareUrl(currentShareReport);
+                    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(text)}`;
+                    window.open(facebookUrl, '_blank', 'width=600,height=400');
+                }, 500);
+            };
+
+            // Nextdoor share
+            document.getElementById('shareNextdoor').onclick = () => {
+                const text = generateNextdoorPost(currentShareReport);
+                previewContent.innerHTML = `<div style="white-space: pre-wrap;">${text}</div>`;
+
+                // Copy to clipboard for pasting on Nextdoor
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('✓ Post copied to clipboard! Open Nextdoor and paste to share.');
+                    window.open('https://nextdoor.com/', '_blank');
+                });
+            };
+
+            // Copy link
+            document.getElementById('shareCopyLink').onclick = () => {
+                const shareUrl = generateShareUrl(currentShareReport);
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    previewContent.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #10b981;">
+                            ✓ Link copied to clipboard!<br>
+                            <a href="${shareUrl}" target="_blank" style="color: #3b82f6; text-decoration: underline; font-size: 12px; margin-top: 8px; display: inline-block;">${shareUrl}</a>
+                        </div>
+                    `;
+                });
+            };
+
+            // Email share
+            document.getElementById('shareEmail').onclick = () => {
+                const subject = `⚠️ Danger Zone Alert - TrapperTracker`;
+                const body = generateEmailBody(currentShareReport);
+                const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                window.location.href = mailtoUrl;
+
+                previewContent.innerHTML = `<div style="white-space: pre-wrap;">${body}</div>`;
+            };
+        }
+
+        // Generate Facebook post template
+        function generateFacebookPost(report) {
+            const location = getCityFromCoords(report.latitude, report.longitude);
+            return `⚠️🐾 URGENT: TRAPPER ACTIVITY ALERT 🐾⚠️
+
+${location} residents - DANGER ZONE reported:
+
+📍 Location: ${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}
+📅 Reported: ${formatDate(report.report_timestamp)}
+⚠️ Details: ${report.description || 'Suspicious trapper activity in area'}
+
+🚨 KEEP YOUR PETS SAFE! 🚨
+Check the LIVE map before walking your pets:
+👉 trappertracker.com
+
+PLEASE SHARE to warn your neighbors!
+Every share could save a pet's life. 💔🙏
+
+#PetSafety #TrapperAlert #${location.replace(/\s+/g, '')} #DangerZone`;
+        }
+
+        // Generate Nextdoor post template
+        function generateNextdoorPost(report) {
+            const location = getCityFromCoords(report.latitude, report.longitude);
+            return `🏘️ Neighborhood Safety Alert
+
+Hello neighbors,
+
+I wanted to share important safety information about our area. A trapper activity report was recently submitted through TrapperTracker.com.
+
+📍 Reported Location:
+${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}
+
+📅 Report Date: ${formatDate(report.report_timestamp)}
+
+📝 Details:
+${report.description || 'Suspicious trapper activity reported in this area'}
+
+🐕 What You Can Do:
+✓ Keep pets leashed and supervised
+✓ Check the map before walks: trappertracker.com
+✓ Report any suspicious activity
+✓ Spread awareness to neighbors
+
+This is a community safety tool where we can all contribute to keeping our pets safe. Please check the interactive map for specific details and add any locations you're aware of.
+
+View the live map: trappertracker.com
+
+Stay safe, neighbors! 🏠`;
+        }
+
+        // Generate email body
+        function generateEmailBody(report) {
+            return `⚠️ DANGER ZONE ALERT - TrapperTracker
+
+A trapper activity report has been submitted to TrapperTracker:
+
+Report #${report.report_id}
+Location: ${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}
+Reported: ${formatDate(report.report_timestamp)}
+Description: ${report.description || 'No description provided'}
+
+🐾 Keep your pets safe! Check the live map before walking:
+🔗 https://trappertracker.com
+
+TrapperTracker is a community-driven safety tool that helps pet owners avoid dangerous areas.
+
+---
+This alert was shared from TrapperTracker.com`;
+        }
+
+        // Generate shareable URL for a specific report
+        function generateShareUrl(report) {
+            const baseUrl = window.location.origin;
+            return `${baseUrl}/?lat=${report.latitude}&lng=${report.longitude}&zoom=16&report=${report.report_id}`;
+        }
+
+        // Get city name from coordinates (simplified)
+        function getCityFromCoords(lat, lng) {
+            // This is a placeholder - in production, you'd use reverse geocoding
+            // For now, return a generic location based on coordinates
+            if (lat > 40 && lat < 42 && lng > -75 && lng < -73) return 'New York';
+            if (lat > 33 && lat < 34 && lng > -118 && lng < -117) return 'Los Angeles';
+            if (lat > 29 && lat < 31 && lng > -95 && lng < -94) return 'Houston';
+            return 'Local Area';
         }
 
         // Setup panel toggle button
