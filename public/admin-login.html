@@ -66,19 +66,28 @@
                         const response = await fetch('/api/admin-login', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include', // Important for cookies
                             body: JSON.stringify({ username, password })
                         });
 
+                        console.log('Admin login response status:', response.status);
+
                         if (response.ok) {
                             const data = await response.json();
+                            console.log('Admin login response data:', { success: data.success, role: data.role, hasToken: !!data.token });
 
                             if (data.success && data.role === 'admin') {
-                                localStorage.setItem('admin_token', data.token);
+                                if (data.token) {
+                                    localStorage.setItem('admin_token', data.token);
+                                    console.log('Token stored in localStorage');
+                                }
                                 displayMessage('✓ Admin login successful!', false);
                                 setTimeout(() => {
+                                    console.log('Redirecting to admin dashboard...');
                                     window.location.href = '/admin-dashboard.html';
                                 }, 1000);
                             } else {
+                                console.error('Login failed: Missing success or admin role');
                                 displayMessage('Access denied. Admin privileges required.');
                                 loginButton.disabled = false;
                                 loginButton.textContent = 'Admin Login';
@@ -87,9 +96,14 @@
                             let errorMessage = 'Invalid credentials';
                             try {
                                 const errorData = await response.json();
+                                console.error('Login error response:', errorData);
                                 errorMessage = errorData.error || errorData.message || errorMessage;
+                                if (errorData.remainingAttempts !== undefined) {
+                                    errorMessage += ` (${errorData.remainingAttempts} attempts remaining)`;
+                                }
                             } catch {
                                 errorMessage = await response.text() || response.statusText;
+                                console.error('Login error (raw):', errorMessage);
                             }
                             displayMessage(errorMessage);
                             loginButton.disabled = false;

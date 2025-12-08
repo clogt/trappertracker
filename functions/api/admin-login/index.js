@@ -90,15 +90,20 @@ export async function onRequestPost({ request, env }) {
             // Log successful admin login
             console.log(`Admin login successful from IP: ${clientIP} at ${new Date().toISOString()}`);
 
+            // Determine if we're on a secure connection
+            const isSecure = request.url.startsWith('https://');
+            const secureFlag = isSecure ? ' Secure;' : '';
+
             return new Response(JSON.stringify({
                 success: true,
                 role: 'admin',
-                username: adminUsername
+                username: adminUsername,
+                token: token // Include token in response for client-side storage if needed
             }), {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Set-Cookie': `admin_token=${token}; Path=/; HttpOnly; SameSite=Strict; Secure; Max-Age=28800` // 8 hours
+                    'Set-Cookie': `admin_token=${token}; Path=/; HttpOnly; SameSite=Strict;${secureFlag} Max-Age=28800` // 8 hours
                 }
             });
         } else {
