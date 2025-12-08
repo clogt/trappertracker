@@ -662,6 +662,17 @@ For multi-user: Implement centralized logging and monitoring.
 
 ## Change Log
 
+**2025-12-08:**
+- ✅ RESOLVED #4: Enhanced date parsing to handle relative dates ("X days/weeks/months ago")
+- ✅ RESOLVED #10: Added browser notifications for submission feedback
+- ✅ RESOLVED #11: Implemented queue management UI in popup
+- ✅ RESOLVED #13: Added duplicate submission prevention
+- ✅ IMPROVED #6: Increased MAX_RETRIES from 5 to 10
+- ✅ IMPROVED #8: Added service worker keepalive mechanism
+- Updated text truncation limit from 1000 to 2000 characters
+- Added badge counter showing pending submissions
+- Permanently disable submit button after successful submission
+
 **2025-12-03:**
 - Initial known issues documentation
 - Identified 19 issues across categories
