@@ -6,6 +6,16 @@ import { onRequestGet as usersHandler } from './users.js';
 import { onRequestGet as allReportsHandler } from './all-reports.js';
 import { onRequestPost as updateUserRoleHandler } from './update-user-role.js';
 import { onRequestDelete as deleteUserHandler } from './delete-user.js';
+import {
+    onRequestGet as getPendingSubmissionsHandler,
+    onRequestPost as approvePendingSubmissionHandler,
+    onRequestDelete as rejectPendingSubmissionHandler
+} from './pending-submissions-admin.js';
+import {
+    onRequestGet as getSystemConfigHandler,
+    onRequestPost as updateSystemConfigHandler,
+    onRequestPut as emergencyModeHandler
+} from './system-config.js';
 
 export async function handleAdminRequest(request, env) {
     const url = new URL(request.url);
@@ -28,6 +38,18 @@ export async function handleAdminRequest(request, env) {
             return await updateUserRoleHandler({ request, env });
         } else if (path === '/api/admin/delete-user' && (method === 'DELETE' || method === 'POST')) {
             return await deleteUserHandler({ request, env });
+        } else if (path === '/api/admin/pending-submissions' && method === 'GET') {
+            return await getPendingSubmissionsHandler({ request, env });
+        } else if (path === '/api/admin/pending-submissions/approve' && method === 'POST') {
+            return await approvePendingSubmissionHandler({ request, env });
+        } else if (path.startsWith('/api/admin/pending-submissions/') && method === 'DELETE') {
+            return await rejectPendingSubmissionHandler({ request, env });
+        } else if (path === '/api/admin/system-config' && method === 'GET') {
+            return await getSystemConfigHandler({ request, env });
+        } else if (path === '/api/admin/system-config' && method === 'POST') {
+            return await updateSystemConfigHandler({ request, env });
+        } else if (path === '/api/admin/system-config/emergency-mode' && method === 'PUT') {
+            return await emergencyModeHandler({ request, env });
         }
 
         // No matching route
