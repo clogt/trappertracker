@@ -55,3 +55,28 @@ export function unauthorizedResponse() {
         headers: { 'Content-Type': 'application/json' }
     });
 }
+
+/**
+ * Verify admin authentication and return structured response
+ * @param {Request} request - The incoming request
+ * @param {Object} env - Environment variables
+ * @returns {Promise<Object>} Object with authenticated flag, userId, and error details
+ */
+export async function verifyAdminAuth(request, env) {
+    const payload = await verifyAdminToken(request, env);
+
+    if (!payload) {
+        return {
+            authenticated: false,
+            error: 'Unauthorized. Admin authentication required.',
+            status: 401
+        };
+    }
+
+    return {
+        authenticated: true,
+        userId: payload.userId,
+        username: payload.username,
+        role: payload.role
+    };
+}

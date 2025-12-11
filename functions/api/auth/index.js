@@ -48,6 +48,24 @@ export async function authenticateUser(request, env) {
     try {
         const JWT_SECRET = getJwtSecret(env);
         const { payload } = await jose.jwtVerify(jwt, JWT_SECRET);
+
+        // Check if token or user is blacklisted (revoked)
+        if (env.SESSION_BLACKLIST) {
+            // Check 1: Individual token revocation (from logout)
+            const isTokenBlacklisted = await env.SESSION_BLACKLIST.get(`token:${jwt}`);
+            if (isTokenBlacklisted) {
+                console.log("Token is blacklisted (revoked)");
+                return null;
+            }
+
+            // Check 2: User-level revocation (from admin force logout)
+            const isUserRevoked = await env.SESSION_BLACKLIST.get(`user_revoked:${payload.userId}`);
+            if (isUserRevoked) {
+                console.log(`User ${payload.userId} sessions are revoked`);
+                return null;
+            }
+        }
+
         return payload.userId;
     } catch (e) {
         console.error("JWT verification failed:", e);

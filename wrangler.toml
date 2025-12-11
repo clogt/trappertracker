@@ -14,3 +14,7 @@ database_id = "58d143ae-9c04-4136-b155-10f616846291"
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "trapper-tracker-photos"
+
+[[kv_namespaces]]
+binding = "SESSION_BLACKLIST"
+id = "0f1898736e50470e9c9b10fe7872e06e"

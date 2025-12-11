@@ -1,7 +1,7 @@
 /**
- * Reports Endpoint
- * Returns all danger zone reports from the database
- * Used by monitoring and admin systems
+ * Get All Blips Endpoint
+ * Returns all danger zone reports (alias for reports endpoint)
+ * Used by map and monitoring systems
  */
 
 export async function onRequestGet(context) {
@@ -22,7 +22,7 @@ export async function onRequestGet(context) {
       }
     });
   } catch (error) {
-    console.error('Error fetching reports:', error);
+    console.error('Error fetching blips:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
