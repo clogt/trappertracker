@@ -43,16 +43,17 @@ The project is public and open-source to foster trust, transparency, and communi
 - [X] **Donation Feature:** Add a placeholder "Support Us" link to the UI.
 
 ### Phase 2: Polish & Launch
-- [X] **Security Review:** Perform a full "Red Team" audit of all new code.
-- [X] **UI/UX Refinement:** Improve usability and mobile experience.
-- [X] **Testing:** Full end-to-end testing of all features.
-- [X] **Deployment:** Deploy to production and connect the custom domain.
+- [ ] **Admin Moderation System:** A comprehensive system for administrators to moderate user-submitted reports.
+- [ ] **Security Review:** Perform a full "Red Team" audit of all new code.
+- [ ] **UI/UX Refinement:** Improve usability and mobile experience.
+- [ ] **Testing:** Full end-to-end testing of all features.
+- [ ] **Deployment:** Deploy to production and connect the custom domain.
 
 ### Phase 3: Post-Launch / V2.0 Features
-- [X] **AI-Powered Matching:** Engine to match `lost` and `found` pet reports.
-- [X] **Notification System:** Email alerts for matched pets.
-- [X] **Premium Admin App:** Design and development of the paid application. (Initial scaffolding complete)
-- [X] **Direct Image Uploads:** Implement a solution for direct photo uploads.
+- [ ] **AI-Powered Matching:** Engine to match `lost` and `found` pet reports.
+- [ ] **Notification System:** Email alerts for matched pets.
+- [ ] **Premium Admin App:** Design and development of the paid application.
+- [ ] **Direct Image Uploads:** Implement a solution for direct photo uploads.
 
 ## 4. Development Process
 
