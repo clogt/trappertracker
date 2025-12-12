@@ -164,11 +164,14 @@ export async function handleReportRequest(request, env) {
 
         const timestamp = new Date().toISOString();
 
+        let reportId;
+
         if (reportData.report_type === 'dangerZone') {
             const stmt = env.DB.prepare(
-                'INSERT INTO trapper_blips (latitude, longitude, report_timestamp, reported_by_user_id, description) VALUES (?, ?, ?, ?, ?)'
+                'INSERT INTO trapper_blips (latitude, longitude, report_timestamp, reported_by_user_id, description) VALUES (?, ?, ?, ?, ?) RETURNING blip_id'
             );
-            await stmt.bind(latitude, longitude, timestamp, userId, description).run();
+            const result = await stmt.bind(latitude, longitude, timestamp, userId, description).first();
+            reportId = result?.blip_id;
 
         } else if (reportData.report_type === 'lostPet') {
             const pet_name = sanitizeHTML(reportData.pet_name);
@@ -176,31 +179,40 @@ export async function handleReportRequest(request, env) {
             const photo_url = sanitizeHTML(reportData.photo_url);
             const owner_contact_email = sanitizeHTML(reportData.owner_contact_email);
             const stmt = env.DB.prepare(
-                'INSERT INTO lost_pets (latitude, longitude, pet_name, species_breed, photo_url, description, owner_contact_email, time_lost, reported_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO lost_pets (latitude, longitude, pet_name, species_breed, photo_url, description, owner_contact_email, time_lost, reported_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING pet_id'
             );
-            await stmt.bind(latitude, longitude, pet_name, species_breed, photo_url, description, owner_contact_email, timestamp, userId).run();
+            const result = await stmt.bind(latitude, longitude, pet_name, species_breed, photo_url, description, owner_contact_email, timestamp, userId).first();
+            reportId = result?.pet_id;
 
         } else if (reportData.report_type === 'foundPet') {
             const species_breed = sanitizeHTML(reportData.species_breed);
             const photo_url = sanitizeHTML(reportData.photo_url);
             const contact_info = sanitizeHTML(reportData.contact_info);
             const stmt = env.DB.prepare(
-                'INSERT INTO found_pets (latitude, longitude, species_breed, photo_url, description, contact_info, time_found, reported_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO found_pets (latitude, longitude, species_breed, photo_url, description, contact_info, time_found, reported_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING found_pet_id'
             );
-            await stmt.bind(latitude, longitude, species_breed, photo_url, description, contact_info, timestamp, userId).run();
+            const result = await stmt.bind(latitude, longitude, species_breed, photo_url, description, contact_info, timestamp, userId).first();
+            reportId = result?.found_pet_id;
 
         } else if (reportData.report_type === 'dangerousAnimal') {
             const animal_type = sanitizeHTML(reportData.animal_type);
             const stmt = env.DB.prepare(
-                'INSERT INTO dangerous_animals (latitude, longitude, animal_type, description, report_timestamp, reported_by_user_id) VALUES (?, ?, ?, ?, ?, ?)'
+                'INSERT INTO dangerous_animals (latitude, longitude, animal_type, description, report_timestamp, reported_by_user_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING danger_id'
             );
-            await stmt.bind(latitude, longitude, animal_type, description, timestamp, userId).run();
-        
+            const result = await stmt.bind(latitude, longitude, animal_type, description, timestamp, userId).first();
+            reportId = result?.danger_id;
+
         } else {
             return new Response(JSON.stringify({ error: 'Invalid report_type' }), { status: 400 });
         }
 
-        return new Response('Report submitted successfully', { status: 200 });
+        return new Response(JSON.stringify({
+            message: 'Report submitted successfully',
+            report_id: reportId
+        }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
     } catch (e) {
         console.error("Report submission error:", e);
         return new Response(JSON.stringify({ error: e.message }), { status: 500 });
