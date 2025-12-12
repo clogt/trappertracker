@@ -93,3 +93,10 @@ CREATE TABLE IF NOT EXISTS pending_submissions (
 
 -- Add source_url column to trapper_blips for tracking Facebook posts
 ALTER TABLE trapper_blips ADD COLUMN source_url TEXT;
+
+-- Table 8: blocked_ips (IP Blocking System)
+CREATE TABLE blocked_ips (
+    ip_address TEXT PRIMARY KEY,
+    reason TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
