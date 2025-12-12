@@ -1,11 +1,13 @@
 // Approve a report
 import { verifyAdminAuth } from '../../auth-helper.js';
 
+import { csrfMiddleware } from '../../csrf-middleware.js';
+
 /**
  * PUT /api/admin/reports/:id/approve
  * Approve a report and make it visible on the public map
  */
-export async function onRequestPut({ request, env, params }) {
+export const onRequestPut = csrfMiddleware(async ({ request, env, params }) => {
     const adminAuth = await verifyAdminAuth(request, env);
     if (!adminAuth.authenticated) {
         return new Response(JSON.stringify({ error: adminAuth.error }), {

@@ -1,7 +1,9 @@
 // Update user role
 import { verifyAdminToken, unauthorizedResponse } from './auth-helper.js';
 
-export async function onRequestPost({ request, env }) {
+import { csrfMiddleware } from './csrf-middleware.js';
+
+export const onRequestPost = csrfMiddleware(async ({ request, env }) => {
     try {
         // Verify admin authentication
         const adminPayload = await verifyAdminToken(request, env);

@@ -1,12 +1,14 @@
 // Bulk actions for reports (approve, reject, delete multiple)
 import { verifyAdminAuth } from '../auth-helper.js';
 
+import { csrfMiddleware } from '../csrf-middleware.js';
+
 /**
  * POST /api/admin/reports/bulk-action
  * Perform bulk actions on multiple reports
  * Body: { action: 'approve'|'reject'|'delete', reportIds: [1,2,3], reason?: string, notes?: string }
  */
-export async function onRequestPost({ request, env }) {
+export const onRequestPost = csrfMiddleware(async ({ request, env }) => {
     const adminAuth = await verifyAdminAuth(request, env);
     if (!adminAuth.authenticated) {
         return new Response(JSON.stringify({ error: adminAuth.error }), {

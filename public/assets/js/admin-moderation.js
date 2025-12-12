@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedReports = new Set();
     let allReports = [];
     let currentDetailReport = null;
+    let csrfToken = '';
 
     // DOM Elements
     const adminMessage = document.getElementById('admin-message');
@@ -27,27 +28,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportDetailModal = document.getElementById('reportDetailModal');
     const closeDetailModalBtn = document.getElementById('closeDetailModal');
 
-    // Check authentication
-    checkAuth();
-
-    function displayMessage(message, isError = true) {
-        if (adminMessage) {
-            adminMessage.textContent = message;
-            adminMessage.classList.remove('hidden');
-            if (isError) {
-                adminMessage.classList.remove('text-green-500');
-                adminMessage.classList.add('text-red-500');
+    // Fetch CSRF token
+    async function getCsrfToken() {
+        try {
+            const response = await fetch('/api/admin/csrf-token', {
+                method: 'GET',
+                credentials: 'include',
+            });
+            if (response.ok) {
+                const data = await response.json();
+                csrfToken = data.token;
             } else {
-                adminMessage.classList.remove('text-red-500');
-                adminMessage.classList.add('text-green-500');
+                console.error('Failed to fetch CSRF token');
             }
-            setTimeout(() => {
-                adminMessage.classList.add('hidden');
-                adminMessage.textContent = '';
-            }, 5000);
+        } catch (error) {
+            console.error('Error fetching CSRF token:', error);
         }
     }
 
+    // Check authentication
     async function checkAuth() {
         try {
             const response = await fetch('/api/admin/verify', {
@@ -67,12 +66,33 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Load initial data
+            await getCsrfToken();
             loadStats();
             loadReports();
 
         } catch (error) {
             console.error('Auth check failed:', error);
             window.location.href = '/admin-login.html';
+        }
+    }
+
+    checkAuth();
+
+    function displayMessage(message, isError = true) {
+        if (adminMessage) {
+            adminMessage.textContent = message;
+            adminMessage.classList.remove('hidden');
+            if (isError) {
+                adminMessage.classList.remove('text-green-500');
+                adminMessage.classList.add('text-red-500');
+            } else {
+                adminMessage.classList.remove('text-red-500');
+                adminMessage.classList.add('text-green-500');
+            }
+            setTimeout(() => {
+                adminMessage.classList.add('hidden');
+                adminMessage.textContent = '';
+            }, 5000);
         }
     }
 
@@ -330,7 +350,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/admin/reports/bulk-action', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({
                     action: 'approve',
@@ -364,7 +387,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/admin/reports/bulk-action', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({
                     action: 'reject',
@@ -399,7 +425,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/admin/reports/bulk-action', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({
                     action: 'delete',
@@ -433,7 +462,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`/api/admin/reports/${reportId}/approve`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({ notes })
             });
@@ -459,7 +491,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`/api/admin/reports/${reportId}/reject`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({ reason })
             });
@@ -591,7 +626,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`/api/admin/reports/${reportId}/approve`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({ notes })
             });
@@ -618,7 +656,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`/api/admin/reports/${reportId}/reject`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({ reason })
             });
@@ -645,7 +686,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`/api/admin/reports/${reportId}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({ reason })
             });

@@ -1,6 +1,8 @@
 // Get, update, or delete a single report
 import { verifyAdminAuth } from '../../auth-helper.js';
 
+import { csrfMiddleware } from '../../csrf-middleware.js';
+
 /**
  * GET /api/admin/reports/:id
  * Get full details of a single report including edit history
@@ -121,7 +123,7 @@ export async function onRequestGet({ request, env, params }) {
  * PUT /api/admin/reports/:id
  * Edit a report's fields
  */
-export async function onRequestPut({ request, env, params }) {
+export const onRequestPut = csrfMiddleware(async ({ request, env, params }) => {
     const adminAuth = await verifyAdminAuth(request, env);
     if (!adminAuth.authenticated) {
         return new Response(JSON.stringify({ error: adminAuth.error }), {
@@ -244,13 +246,13 @@ export async function onRequestPut({ request, env, params }) {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-}
+});
 
 /**
  * DELETE /api/admin/reports/:id
  * Permanently delete a report
  */
-export async function onRequestDelete({ request, env, params }) {
+export const onRequestDelete = csrfMiddleware(async ({ request, env, params }) => {
     const adminAuth = await verifyAdminAuth(request, env);
     if (!adminAuth.authenticated) {
         return new Response(JSON.stringify({ error: adminAuth.error }), {
@@ -325,4 +327,5 @@ export async function onRequestDelete({ request, env, params }) {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-}
+});
+

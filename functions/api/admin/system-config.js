@@ -1,6 +1,8 @@
 // Admin endpoint for managing system configuration (emergency controls)
 import { verifyAdminAuth } from './auth-helper.js';
 
+import { csrfMiddleware } from './csrf-middleware.js';
+
 /**
  * GET /api/admin/system-config
  * Get all system configuration settings
@@ -72,7 +74,7 @@ export async function onRequestGet({ request, env }) {
  * POST /api/admin/system-config
  * Update system configuration settings
  */
-export async function onRequestPost({ request, env }) {
+export const onRequestPost = csrfMiddleware(async ({ request, env }) => {
     const adminAuth = await verifyAdminAuth(request, env);
     if (!adminAuth.authenticated) {
         return new Response(JSON.stringify({ error: adminAuth.error }), {
@@ -181,13 +183,13 @@ export async function onRequestPost({ request, env }) {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-}
+});
 
 /**
  * POST /api/admin/system-config/emergency-mode
  * Quick toggle for emergency lockdown
  */
-export async function onRequestPut({ request, env }) {
+export const onRequestPut = csrfMiddleware(async ({ request, env }) => {
     const adminAuth = await verifyAdminAuth(request, env);
     if (!adminAuth.authenticated) {
         return new Response(JSON.stringify({ error: adminAuth.error }), {
@@ -271,4 +273,4 @@ export async function onRequestPut({ request, env }) {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-}
+});

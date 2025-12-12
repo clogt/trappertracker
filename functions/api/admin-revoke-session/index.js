@@ -1,12 +1,14 @@
 import { verifyAdminToken } from '../admin/auth-helper.js';
 
+import { csrfMiddleware } from '../admin/csrf-middleware.js';
+
 /**
  * Admin Endpoint: Force Revoke User Session
  * Allows administrators to forcefully revoke all sessions for a specific user
  * Use case: Compromised account, security incident, user ban
  */
 
-export async function onRequestPost(context) {
+export const onRequestPost = csrfMiddleware(async (context) => {
     const { request, env } = context;
 
     // Authenticate admin

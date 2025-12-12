@@ -1,7 +1,9 @@
 // Delete user
 import { verifyAdminToken, unauthorizedResponse } from './auth-helper.js';
 
-export async function onRequestDelete({ request, env }) {
+import { csrfMiddleware } from './csrf-middleware.js';
+
+export const onRequestDelete = csrfMiddleware(async ({ request, env }) => {
     try {
         // Verify admin authentication
         const adminPayload = await verifyAdminToken(request, env);

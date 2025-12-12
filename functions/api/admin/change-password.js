@@ -2,13 +2,15 @@
 import * as bcrypt from "bcrypt-ts";
 import { verifyAdminToken, unauthorizedResponse } from './auth-helper.js';
 
+import { csrfMiddleware } from './csrf-middleware.js';
+
 /**
  * POST /api/admin/change-password
  * Changes admin password after verifying current password
  * Requires: currentPassword, newPassword in request body
  * Returns: Success message (Note: Admin must manually update ADMIN_PASSWORD_HASH env var)
  */
-export async function onRequestPost({ request, env }) {
+export const onRequestPost = csrfMiddleware(async ({ request, env }) => {
     try {
         // Verify admin authentication
         const adminPayload = await verifyAdminToken(request, env);

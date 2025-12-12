@@ -4,28 +4,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminMessage = document.getElementById('admin-message');
     const logoutButton = document.getElementById('logoutButton');
     const adminTabs = document.querySelectorAll('.admin-tab');
+    let csrfToken = '';
 
-    // Check authentication
-    checkAuth();
-
-    function displayMessage(message, isError = true) {
-        if (adminMessage) {
-            adminMessage.textContent = message;
-            adminMessage.classList.remove('hidden');
-            if (isError) {
-                adminMessage.classList.remove('text-green-500');
-                adminMessage.classList.add('text-red-500');
+    // Fetch CSRF token
+    async function getCsrfToken() {
+        try {
+            const response = await fetch('/api/admin/csrf-token', {
+                method: 'GET',
+                credentials: 'include',
+            });
+            if (response.ok) {
+                const data = await response.json();
+                csrfToken = data.token;
             } else {
-                adminMessage.classList.remove('text-red-500');
-                adminMessage.classList.add('text-green-500');
+                console.error('Failed to fetch CSRF token');
             }
-            setTimeout(() => {
-                adminMessage.classList.add('hidden');
-                adminMessage.textContent = '';
-            }, 5000);
+        } catch (error) {
+            console.error('Error fetching CSRF token:', error);
         }
     }
 
+    // Check authentication
     async function checkAuth() {
         try {
             const response = await fetch('/api/admin/verify', {
@@ -48,12 +47,33 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // User is authenticated as admin, load dashboard data
+            await getCsrfToken();
             loadDashboardStats();
             loadErrorReports();
 
         } catch (error) {
             console.error('Auth check failed:', error);
             window.location.href = '/admin-login.html';
+        }
+    }
+
+    checkAuth();
+
+    function displayMessage(message, isError = true) {
+        if (adminMessage) {
+            adminMessage.textContent = message;
+            adminMessage.classList.remove('hidden');
+            if (isError) {
+                adminMessage.classList.remove('text-green-500');
+                adminMessage.classList.add('text-red-500');
+            } else {
+                adminMessage.classList.remove('text-red-500');
+                adminMessage.classList.add('text-green-500');
+            }
+            setTimeout(() => {
+                adminMessage.classList.add('hidden');
+                adminMessage.textContent = '';
+            }, 5000);
         }
     }
 
@@ -353,7 +373,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/admin/update-user-role', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({ userId, role: newRole })
             });
@@ -380,7 +403,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/admin/delete-user', {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({ userId })
             });
@@ -479,7 +505,10 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch('/api/admin/change-password', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken,
+                    },
                     credentials: 'include',
                     body: JSON.stringify({
                         currentPassword,
@@ -542,7 +571,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/admin/delete-report', {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
                 credentials: 'include',
                 body: JSON.stringify({ reportType, reportId })
             });
