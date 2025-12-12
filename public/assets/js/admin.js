@@ -423,6 +423,8 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordChangeForm.reset();
         passwordError.classList.add('hidden');
         passwordSuccess.classList.add('hidden');
+        // Clear any dynamically added elements (hash display and copy button)
+        passwordSuccess.innerHTML = '';
     };
 
     if (closePasswordModal) {
@@ -488,12 +490,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (response.ok) {
-                    passwordSuccess.textContent = `Password changed successfully! New hash: ${data.newPasswordHash}`;
+                    passwordSuccess.textContent = `✓ Password changed successfully! Please copy the hash below and update your ADMIN_PASSWORD_HASH environment variable in Cloudflare Pages settings.`;
                     passwordSuccess.classList.remove('hidden');
+
+                    // Create a copyable hash display
+                    const hashDisplay = document.createElement('div');
+                    hashDisplay.className = 'mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded font-mono text-xs break-all border border-gray-300 dark:border-gray-600';
+                    hashDisplay.textContent = data.newPasswordHash;
+
+                    const copyBtn = document.createElement('button');
+                    copyBtn.textContent = '📋 Copy Hash';
+                    copyBtn.className = 'mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700';
+                    copyBtn.onclick = () => {
+                        navigator.clipboard.writeText(data.newPasswordHash);
+                        copyBtn.textContent = '✓ Copied!';
+                        setTimeout(() => copyBtn.textContent = '📋 Copy Hash', 2000);
+                    };
+
+                    passwordSuccess.appendChild(hashDisplay);
+                    passwordSuccess.appendChild(copyBtn);
                     passwordChangeForm.reset();
 
                     // Show detailed instructions
-                    displayMessage('Password changed! Check modal for new hash to update ADMIN_PASSWORD_HASH environment variable.', false);
+                    displayMessage('Password changed! Copy the hash from the modal and update ADMIN_PASSWORD_HASH in your environment variables.', false);
 
                     // Auto-close modal after 15 seconds
                     setTimeout(() => {

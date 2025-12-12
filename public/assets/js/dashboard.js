@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function checkAuth() {
         try {
-            const profileResponse = await fetch('/api/user/profile', {
+            const profileResponse = await fetch('/api/auth/verify', {
                 credentials: 'include'
             });
 

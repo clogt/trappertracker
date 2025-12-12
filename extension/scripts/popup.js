@@ -1,5 +1,98 @@
 // TrapperTracker Extension Popup Script
 
+// Default keywords
+const DEFAULT_KEYWORDS = ['trap', 'trapper', 'street'];
+
+// Load and render keywords
+function loadKeywords() {
+    chrome.storage.sync.get(['keywords'], (result) => {
+        const keywords = result.keywords || DEFAULT_KEYWORDS;
+        renderKeywords(keywords);
+    });
+}
+
+// Render keywords as tags
+function renderKeywords(keywords) {
+    const keywordsList = document.getElementById('keywordsList');
+    keywordsList.innerHTML = '';
+
+    keywords.forEach(keyword => {
+        const tag = document.createElement('div');
+        tag.className = 'keyword-tag';
+        tag.innerHTML = `
+            <span>${escapeHtml(keyword)}</span>
+            <span class="remove-keyword" data-keyword="${escapeHtml(keyword)}">&times;</span>
+        `;
+        keywordsList.appendChild(tag);
+    });
+
+    // Add event listeners for remove buttons
+    document.querySelectorAll('.remove-keyword').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const keyword = e.target.getAttribute('data-keyword');
+            removeKeyword(keyword);
+        });
+    });
+}
+
+// Add new keyword
+function addKeyword(keyword) {
+    // Validation
+    keyword = keyword.trim().toLowerCase();
+
+    if (!keyword) {
+        alert('Please enter a keyword');
+        return;
+    }
+
+    if (keyword.length > 50) {
+        alert('Keyword too long (max 50 characters)');
+        return;
+    }
+
+    chrome.storage.sync.get(['keywords'], (result) => {
+        const keywords = result.keywords || DEFAULT_KEYWORDS;
+
+        // Check for duplicates
+        if (keywords.includes(keyword)) {
+            alert('Keyword already exists');
+            return;
+        }
+
+        // Add keyword
+        keywords.push(keyword);
+
+        // Save to storage
+        chrome.storage.sync.set({ keywords }, () => {
+            renderKeywords(keywords);
+            document.getElementById('newKeywordInput').value = '';
+            console.log('Keyword added:', keyword);
+        });
+    });
+}
+
+// Remove keyword
+function removeKeyword(keyword) {
+    chrome.storage.sync.get(['keywords'], (result) => {
+        let keywords = result.keywords || DEFAULT_KEYWORDS;
+
+        // Don't allow removing the last keyword
+        if (keywords.length <= 1) {
+            alert('You must have at least one keyword');
+            return;
+        }
+
+        // Remove keyword
+        keywords = keywords.filter(k => k !== keyword);
+
+        // Save to storage
+        chrome.storage.sync.set({ keywords }, () => {
+            renderKeywords(keywords);
+            console.log('Keyword removed:', keyword);
+        });
+    });
+}
+
 // Update stats on popup open
 chrome.runtime.sendMessage({ action: 'getStats' }, (stats) => {
     if (stats) {
@@ -46,16 +139,58 @@ document.getElementById('openTrackerBtn').addEventListener('click', () => {
 let queueVisible = false;
 document.getElementById('toggleQueueBtn').addEventListener('click', () => {
     queueVisible = !queueVisible;
+    settingsVisible = false; // Close settings if open
     const container = document.getElementById('queueContainer');
+    const settingsContainer = document.getElementById('settingsContainer');
     const btn = document.getElementById('toggleQueueBtn');
+    const settingsBtn = document.getElementById('toggleSettingsBtn');
 
     if (queueVisible) {
         container.style.display = 'block';
+        settingsContainer.style.display = 'none';
         btn.textContent = '📋 Hide Queue';
+        settingsBtn.textContent = '⚙️ Settings';
         loadQueue();
     } else {
         container.style.display = 'none';
         btn.textContent = '📋 View Queue';
+    }
+});
+
+// Toggle settings view
+let settingsVisible = false;
+document.getElementById('toggleSettingsBtn').addEventListener('click', () => {
+    settingsVisible = !settingsVisible;
+    queueVisible = false; // Close queue if open
+    const container = document.getElementById('settingsContainer');
+    const queueContainer = document.getElementById('queueContainer');
+    const btn = document.getElementById('toggleSettingsBtn');
+    const queueBtn = document.getElementById('toggleQueueBtn');
+
+    if (settingsVisible) {
+        container.style.display = 'block';
+        queueContainer.style.display = 'none';
+        btn.textContent = '⚙️ Hide Settings';
+        queueBtn.textContent = '📋 View Queue';
+        loadKeywords();
+    } else {
+        container.style.display = 'none';
+        btn.textContent = '⚙️ Settings';
+    }
+});
+
+// Add keyword button
+document.getElementById('addKeywordBtn').addEventListener('click', () => {
+    const input = document.getElementById('newKeywordInput');
+    const keyword = input.value;
+    addKeyword(keyword);
+});
+
+// Add keyword on Enter key
+document.getElementById('newKeywordInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const keyword = e.target.value;
+        addKeyword(keyword);
     }
 });
 

@@ -130,7 +130,15 @@ async function attemptSubmission(submission) {
     try {
         console.log(`TrapperTracker: Attempting submission ${submission.id} (attempt ${submission.attempts})`);
 
-        // Get session cookie from TrapperTracker domain
+        // API KEY AUTHENTICATION - PREPARED BUT NOT ACTIVATED
+        // TODO: Activate this when backend endpoint supports API key authentication
+        // const apiKey = await getApiKey();
+        // if (apiKey) {
+        //     console.log('TrapperTracker: Using API key authentication');
+        //     return await submitWithApiKey(submission, apiKey);
+        // }
+
+        // CURRENT METHOD: Cookie-based session authentication
         const sessionCookie = await getSessionCookie();
 
         if (!sessionCookie) {
@@ -140,12 +148,13 @@ async function attemptSubmission(submission) {
             return;
         }
 
-        // Make API request
+        // Make API request with cookie authentication
         const response = await fetch(API_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Cookie': sessionCookie
+                // API key authentication would add: 'Authorization': `Bearer ${apiKey}`
             },
             credentials: 'include',
             body: JSON.stringify({
@@ -360,3 +369,54 @@ chrome.alarms.onAlarm.addListener((alarm) => {
         updateBadge();
     }
 });
+
+// ============================================================================
+// API KEY AUTHENTICATION - PREPARED BUT NOT ACTIVATED
+// ============================================================================
+// Uncomment and use these functions when backend endpoint supports API keys
+// Backend needs to implement: POST /api/extension-submit with Authorization header
+// ============================================================================
+
+// Get API key from storage
+// async function getApiKey() {
+//     return new Promise((resolve) => {
+//         chrome.storage.sync.get(['apiKey'], (result) => {
+//             resolve(result.apiKey || null);
+//         });
+//     });
+// }
+
+// Submit using API key authentication (instead of cookies)
+// async function submitWithApiKey(submission, apiKey) {
+//     const response = await fetch(API_ENDPOINT, {
+//         method: 'POST',
+//         headers: {
+//             'Content-Type': 'application/json',
+//             'Authorization': `Bearer ${apiKey}`
+//         },
+//         body: JSON.stringify({
+//             description: submission.description,
+//             sourceURL: submission.sourceURL,
+//             dateReported: submission.dateReported,
+//             latitude: submission.latitude,
+//             longitude: submission.longitude
+//         })
+//     });
+//
+//     if (response.ok) {
+//         console.log(`TrapperTracker: Submission ${submission.id} successful (API key)`);
+//         submission.status = 'completed';
+//         await updateQueue(submission);
+//         updateStats('success');
+//         await updateBadge();
+//         showNotification('Success!', 'Report submitted to TrapperTracker', 'success');
+//     } else if (response.status === 401 || response.status === 403) {
+//         console.warn('TrapperTracker: API key authentication failed');
+//         submission.status = 'auth_required';
+//         await updateQueue(submission);
+//         await updateBadge();
+//         showNotification('Invalid API Key', 'Please update your API key in settings', 'warning');
+//     } else {
+//         throw new Error(`API returned ${response.status}`);
+//     }
+// }

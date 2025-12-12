@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Moderation Queue - TrapperTracker Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        .status-badge-pending { @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200; }
+        .status-badge-approved { @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200; }
+        .status-badge-rejected { @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200; }
+        .source-badge-manual { @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200; }
+        .source-badge-extension { @apply bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200; }
+        .spam-score-high { @apply bg-red-200 text-red-900 dark:bg-red-800 dark:text-red-100; }
+        .spam-score-medium { @apply bg-orange-200 text-orange-900 dark:bg-orange-800 dark:text-orange-100; }
+        .spam-score-low { @apply bg-yellow-200 text-yellow-900 dark:bg-yellow-800 dark:text-yellow-100; }
+        .report-row:hover { @apply bg-gray-50 dark:bg-gray-700; }
+        .report-row.selected { @apply bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500; }
+        #miniMap { height: 200px; }
+        .keyboard-hint { @apply text-xs text-gray-500 dark:text-gray-400 ml-2; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200">
+    <div class="container mx-auto p-4 max-w-7xl">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-700 dark:text-gray-200">Report Moderation Queue</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Review and moderate user-submitted reports</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="adminIndicator" class="text-sm font-medium text-green-600 dark:text-green-400">
+                    Admin: <span id="adminUsername">...</span>
+                </span>
+                <a href="/admin-dashboard.html" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm font-medium">
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        <div id="admin-message" class="text-center text-sm mb-4 hidden"></div>
+
+        <!-- Stats Summary -->
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+            <div class="bg-yellow-100 dark:bg-yellow-900 shadow rounded-lg p-4">
+                <h3 class="text-xs font-medium text-yellow-800 dark:text-yellow-200 uppercase">Pending</h3>
+                <p id="statPending" class="text-2xl font-bold text-yellow-900 dark:text-yellow-100">-</p>
+            </div>
+            <div class="bg-green-100 dark:bg-green-900 shadow rounded-lg p-4">
+                <h3 class="text-xs font-medium text-green-800 dark:text-green-200 uppercase">Approved</h3>
+                <p id="statApproved" class="text-2xl font-bold text-green-900 dark:text-green-100">-</p>
+            </div>
+            <div class="bg-red-100 dark:bg-red-900 shadow rounded-lg p-4">
+                <h3 class="text-xs font-medium text-red-800 dark:text-red-200 uppercase">Rejected</h3>
+                <p id="statRejected" class="text-2xl font-bold text-red-900 dark:text-red-100">-</p>
+            </div>
+            <div class="bg-orange-100 dark:bg-orange-900 shadow rounded-lg p-4">
+                <h3 class="text-xs font-medium text-orange-800 dark:text-orange-200 uppercase">Flagged</h3>
+                <p id="statFlagged" class="text-2xl font-bold text-orange-900 dark:text-orange-100">-</p>
+            </div>
+            <div class="bg-purple-100 dark:bg-purple-900 shadow rounded-lg p-4">
+                <h3 class="text-xs font-medium text-purple-800 dark:text-purple-200 uppercase">Suspected Spam</h3>
+                <p id="statSpam" class="text-2xl font-bold text-purple-900 dark:text-purple-100">-</p>
+            </div>
+            <div class="bg-blue-100 dark:bg-blue-900 shadow rounded-lg p-4">
+                <h3 class="text-xs font-medium text-blue-800 dark:text-blue-200 uppercase">Total</h3>
+                <p id="statTotal" class="text-2xl font-bold text-blue-900 dark:text-blue-100">-</p>
+            </div>
+        </div>
+
+        <!-- Filters and Controls -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                <div>
+                    <label class="block text-xs font-medium mb-1">Status</label>
+                    <select id="filterStatus" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200">
+                        <option value="pending">Pending Only</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="all">All Statuses</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium mb-1">Source</label>
+                    <select id="filterSource" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200">
+                        <option value="all">All Sources</option>
+                        <option value="manual">Manual</option>
+                        <option value="extension">Extension</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium mb-1">Sort By</label>
+                    <select id="filterSort" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200">
+                        <option value="date">Date (Newest)</option>
+                        <option value="spam_score">Spam Score</option>
+                        <option value="flags">Flag Count</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium mb-1">Filter</label>
+                    <select id="filterFlagged" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200">
+                        <option value="all">All Reports</option>
+                        <option value="true">Flagged Only</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium mb-1">Search</label>
+                    <input type="text" id="filterSearch" placeholder="Search descriptions..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200">
+                </div>
+            </div>
+
+            <!-- Bulk Actions -->
+            <div class="flex items-center gap-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="selectAll" class="rounded">
+                    <label for="selectAll" class="text-sm font-medium">Select All</label>
+                </div>
+                <span id="selectedCount" class="text-sm text-gray-600 dark:text-gray-400">0 selected</span>
+                <div class="flex-1"></div>
+                <button id="bulkApprove" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    Approve Selected <span class="keyboard-hint">(Ctrl+A)</span>
+                </button>
+                <button id="bulkReject" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    Reject Selected <span class="keyboard-hint">(Ctrl+R)</span>
+                </button>
+                <button id="bulkDelete" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    Delete Selected
+                </button>
+            </div>
+        </div>
+
+        <!-- Reports Table -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-10">
+                                <input type="checkbox" id="selectAllHeader" class="rounded">
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Description</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Location</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Source</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Submitted</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Flags / Spam</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportsTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tr>
+                            <td colspan="9" class="px-4 py-8 text-center text-gray-500">Loading reports...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-600">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <button id="prevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        Previous
+                    </button>
+                    <button id="nextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        Next
+                    </button>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700 dark:text-gray-300">
+                            Showing <span id="pageStart" class="font-medium">1</span> to <span id="pageEnd" class="font-medium">20</span> of <span id="pageTotal" class="font-medium">0</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" id="paginationButtons">
+                            <!-- Pagination buttons will be inserted here -->
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Detail Modal -->
+    <div id="reportDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Report Details</h2>
+                <button id="closeDetailModal" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-2xl">&times;</button>
+            </div>
+
+            <div id="reportDetailContent" class="p-6">
+                <!-- Detail content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/admin-moderation.js"></script>
+</body>
+</html>

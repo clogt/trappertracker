@@ -219,6 +219,122 @@
         .queue-item-btn.remove:hover {
             background: #dc2626 !important;
         }
+
+        /* Settings Styles */
+        .settings-container {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .settings-header {
+            margin-bottom: 12px;
+        }
+
+        .settings-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .settings-section {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .settings-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .settings-section h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .settings-description {
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+
+        .settings-info {
+            font-size: 10px;
+            color: #9ca3af;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .keywords-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+            min-height: 32px;
+        }
+
+        .keyword-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .keyword-tag .remove-keyword {
+            cursor: pointer;
+            color: #6366f1;
+            font-weight: bold;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .keyword-tag .remove-keyword:hover {
+            color: #ef4444;
+        }
+
+        .keyword-input-container {
+            display: flex;
+            gap: 6px;
+        }
+
+        .keyword-input-container input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .keyword-input-container input:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .add-keyword-btn {
+            padding: 6px 12px !important;
+            font-size: 12px !important;
+            width: auto !important;
+            margin: 0 !important;
+        }
+
+        #apiKeyInput {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -256,8 +372,37 @@
     </div>
 
     <button id="toggleQueueBtn">📋 View Queue</button>
+    <button id="toggleSettingsBtn">⚙️ Settings</button>
     <button id="retryBtn">🔄 Retry Failed Submissions</button>
     <button id="openTrackerBtn">🗺️ Open TrapperTracker</button>
+
+    <div id="settingsContainer" class="settings-container" style="display: none;">
+        <div class="settings-header">
+            <h2>⚙️ Extension Settings</h2>
+        </div>
+
+        <div class="settings-section">
+            <h3>Detection Keywords</h3>
+            <p class="settings-description">Customize keywords that trigger danger zone detection</p>
+            <div id="keywordsList" class="keywords-list"></div>
+            <div class="keyword-input-container">
+                <input type="text" id="newKeywordInput" placeholder="Add new keyword..." maxlength="50">
+                <button id="addKeywordBtn" class="add-keyword-btn">+ Add</button>
+            </div>
+            <div class="settings-info">
+                Keywords are case-insensitive. At least one keyword required.
+            </div>
+        </div>
+
+        <div class="settings-section" style="opacity: 0.5; pointer-events: none;">
+            <h3>API Key Authentication (Coming Soon)</h3>
+            <p class="settings-description">Configure API key for direct authentication</p>
+            <input type="password" id="apiKeyInput" placeholder="Enter API key..." disabled>
+            <div class="settings-info">
+                This feature will be enabled once backend support is ready. Currently using cookie-based authentication.
+            </div>
+        </div>
+    </div>
 
     <div class="info">
         <strong>How to use:</strong><br>
