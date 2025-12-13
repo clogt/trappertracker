@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Trapper Locations - TrapperTracker Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <h1 class="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">Import Trapper Locations</h1>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Geocode and import community-sourced trapper data</p>
+
+            <div id="status" class="mb-6 p-4 rounded hidden"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Control Panel -->
+                <div>
+                    <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
+                        <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Progress</h2>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600 dark:text-gray-400">Total Locations:</span>
+                                <span id="totalCount" class="font-semibold text-gray-900 dark:text-gray-100">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600 dark:text-gray-400">Geocoded:</span>
+                                <span id="geocodedCount" class="font-semibold text-green-600">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600 dark:text-gray-400">Failed:</span>
+                                <span id="failedCount" class="font-semibold text-red-600">0</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
+                                <div id="progressBar" class="bg-blue-600 h-4 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <button id="startBtn" onclick="startGeocoding()" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-semibold">
+                            Start Geocoding
+                        </button>
+
+                        <button id="downloadBtn" onclick="downloadResults()" disabled class="w-full bg-gray-400 text-white py-3 px-4 rounded-lg cursor-not-allowed font-semibold">
+                            Download Results (JSON)
+                        </button>
+
+                        <button id="importBtn" onclick="importToDatabase()" disabled class="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 font-semibold">
+                            Import to Database
+                        </button>
+                    </div>
+
+                    <!-- Current Location Info -->
+                    <div id="currentInfo" class="mt-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg hidden">
+                        <h3 class="font-semibold text-blue-900 dark:text-blue-100 mb-2">Current Location:</h3>
+                        <p id="currentAddress" class="text-sm text-blue-800 dark:text-blue-200"></p>
+                    </div>
+                </div>
+
+                <!-- Map Preview -->
+                <div>
+                    <div id="map" class="w-full h-96 rounded-lg shadow"></div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">Live preview of geocoded locations</p>
+                </div>
+            </div>
+
+            <!-- Results Table -->
+            <div class="mt-8">
+                <h2 class="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Geocoding Results</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Address</th>
+                                <th class="px-4 py-2 text-left">City</th>
+                                <th class="px-4 py-2 text-left">Coordinates</th>
+                                <th class="px-4 py-2 text-left">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTable" class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr>
+                                <td colspan="4" class="px-4 py-8 text-center text-gray-500">No results yet. Click "Start Geocoding" to begin.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let locations = [];
+        let geocodedResults = [];
+        let currentIndex = 0;
+        let map;
+        let markers = [];
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([30.1588, -85.6602], 11); // Panama City, FL
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        // Load locations data from server
+        async function loadData() {
+            try {
+                showStatus('Loading addresses...', 'success');
+                const response = await fetch('/assets/data/trapper-locations.json');
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                locations = await response.json();
+                document.getElementById('totalCount').textContent = locations.length;
+                showStatus(`Loaded ${locations.length} locations ready to geocode!`, 'success');
+            } catch (err) {
+                showStatus('Error: ' + err.message + '. Deploy the site first!', 'error');
+            }
+        }
+
+        // Geocode single address using browser's built-in geocoding
+        async function geocodeAddress(location) {
+            // Use Nominatim API (browser makes request, bypasses sandbox)
+            const query = encodeURIComponent(location.fullAddress);
+            const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=us`;
+
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'TrapperTracker/1.0'
+                    }
+                });
+
+                const results = await response.json();
+
+                if (results && results.length > 0) {
+                    const result = results[0];
+                    return {
+                        ...location,
+                        latitude: parseFloat(result.lat),
+                        longitude: parseFloat(result.lon),
+                        displayName: result.display_name,
+                        geocoded: true
+                    };
+                } else {
+                    return {
+                        ...location,
+                        geocoded: false,
+                        error: 'No results found'
+                    };
+                }
+            } catch (err) {
+                return {
+                    ...location,
+                    geocoded: false,
+                    error: err.message
+                };
+            }
+        }
+
+        // Start geocoding process
+        async function startGeocoding() {
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('currentInfo').classList.remove('hidden');
+
+            for (let i = currentIndex; i < locations.length; i++) {
+                currentIndex = i;
+                const location = locations[i];
+
+                // Update UI
+                document.getElementById('currentAddress').textContent = location.fullAddress;
+
+                // Geocode
+                const result = await geocodeAddress(location);
+                geocodedResults.push(result);
+
+                // Update map
+                if (result.geocoded) {
+                    const marker = L.marker([result.latitude, result.longitude]).addTo(map);
+                    marker.bindPopup(result.address);
+                    markers.push(marker);
+
+                    // Center map on latest marker
+                    map.setView([result.latitude, result.longitude], 13);
+
+                    updateResultsTable(result, 'success');
+                    document.getElementById('geocodedCount').textContent = geocodedResults.filter(r => r.geocoded).length;
+                } else {
+                    updateResultsTable(result, 'error');
+                    document.getElementById('failedCount').textContent = geocodedResults.filter(r => !r.geocoded).length;
+                }
+
+                // Update progress
+                const progress = Math.round((i + 1) / locations.length * 100);
+                document.getElementById('progressBar').style.width = progress + '%';
+
+                // Rate limiting: 1 request per second
+                await new Promise(resolve => setTimeout(resolve, 1100));
+            }
+
+            document.getElementById('currentInfo').classList.add('hidden');
+            document.getElementById('downloadBtn').disabled = false;
+            document.getElementById('importBtn').disabled = false;
+            showStatus('Geocoding complete! ' + geocodedResults.filter(r => r.geocoded).length + ' locations geocoded successfully.', 'success');
+        }
+
+        // Update results table
+        function updateResultsTable(result, status) {
+            const tbody = document.getElementById('resultsTable');
+
+            // Clear placeholder
+            if (tbody.querySelector('td[colspan="4"]')) {
+                tbody.innerHTML = '';
+            }
+
+            const row = document.createElement('tr');
+            row.className = status === 'success' ? 'bg-green-50 dark:bg-green-900' : 'bg-red-50 dark:bg-red-900';
+            row.innerHTML = `
+                <td class="px-4 py-2 text-gray-900 dark:text-gray-100">${result.address}</td>
+                <td class="px-4 py-2 text-gray-900 dark:text-gray-100">${result.city}</td>
+                <td class="px-4 py-2 text-gray-900 dark:text-gray-100">
+                    ${result.geocoded ? `${result.latitude.toFixed(6)}, ${result.longitude.toFixed(6)}` : '-'}
+                </td>
+                <td class="px-4 py-2">
+                    ${result.geocoded
+                        ? '<span class="text-green-600 font-semibold">✓ Success</span>'
+                        : '<span class="text-red-600 font-semibold">✗ ' + result.error + '</span>'}
+                </td>
+            `;
+            tbody.appendChild(row);
+
+            // Scroll to bottom
+            row.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        // Download results
+        function downloadResults() {
+            const dataStr = JSON.stringify(geocodedResults, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'trapper-locations-geocoded.json';
+            link.click();
+        }
+
+        // Import to database
+        async function importToDatabase() {
+            if (!confirm(`Import ${geocodedResults.filter(r => r.geocoded).length} locations to database?`)) {
+                return;
+            }
+
+            const importData = geocodedResults
+                .filter(r => r.geocoded)
+                .map(loc => ({
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    description: `Trapper location: ${loc.address}${loc.notes ? '. ' + loc.notes : ''}${loc.isNew ? ' (NEW - reported Nov 2024)' : ''}`,
+                    source_type: 'manual',
+                    approval_status: 'pending'
+                }));
+
+            try {
+                const response = await fetch('/api/admin/bulk-import-trappers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        locations: importData,
+                        submitted_by_user_id: null
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showStatus(`Import successful! ${result.results.success} locations imported.`, 'success');
+                    alert(`✅ Import complete!\n\n${result.results.success} locations imported successfully.\n\nNext step: Go to Admin Moderation panel to review and approve them.`);
+                } else {
+                    showStatus('Import failed: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (err) {
+                showStatus('Network error during import: ' + err.message, 'error');
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.className = `mb-6 p-4 rounded ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
+            status.textContent = message;
+            status.classList.remove('hidden');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            loadData();
+        });
+    </script>
+</body>
+</html>

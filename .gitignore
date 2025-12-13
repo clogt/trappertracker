@@ -34,3 +34,22 @@ core.*
 QUICK_TEST.md
 generate-admin-password.js
 migration-*.sql
+security_review_findings.log
+
+# Security tracking and sensitive data (NEVER commit)
+SECURITY_TRACKING.md
+security_*.log
+security_*.md
+*_SECRET*
+*_PASSWORD*
+*_KEY*
+*.key
+*.pem
+*.cert
+
+# Community data with PII (keep local until processed)
+trapper-locations.json
+trapper-locations.csv
+trapper-locations-*.json
+*-geocoded.json
+*-import-ready.json
