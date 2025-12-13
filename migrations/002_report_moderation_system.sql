@@ -8,7 +8,8 @@
 
 -- Add status field if it doesn't exist (safer approach)
 ALTER TABLE pending_submissions ADD COLUMN status TEXT DEFAULT 'pending';
-ALTER TABLE pending_submissions ADD COLUMN submitted_at TEXT DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE pending_submissions ADD COLUMN submitted_at TEXT;
+UPDATE pending_submissions SET submitted_at = datetime('now') WHERE submitted_at IS NULL;
 
 -- ============================================
 -- Update trapper_blips for moderation workflow
