@@ -71,14 +71,14 @@ export async function onRequestGet({ request, env }) {
         let orderByClause;
         switch (params.sort) {
             case 'spam_score':
-                orderByClause = `ORDER BY spam_score ${params.order}, created_at ${params.order}`;
+                orderByClause = `ORDER BY tb.spam_score ${params.order}, tb.created_at ${params.order}`;
                 break;
             case 'flags':
-                orderByClause = `ORDER BY flag_count ${params.order}, created_at ${params.order}`;
+                orderByClause = `ORDER BY tb.flag_count ${params.order}, tb.created_at ${params.order}`;
                 break;
             case 'date':
             default:
-                orderByClause = `ORDER BY created_at ${params.order}`;
+                orderByClause = `ORDER BY tb.created_at ${params.order}`;
         }
 
         // Calculate pagination
