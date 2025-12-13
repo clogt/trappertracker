@@ -44,23 +44,23 @@
 
         <!-- Stats Summary -->
         <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-            <div class="bg-yellow-100 dark:bg-yellow-900 shadow rounded-lg p-4">
+            <div class="bg-yellow-100 dark:bg-yellow-900 shadow rounded-lg p-4 cursor-pointer hover:ring-2 hover:ring-yellow-500 transition" onclick="filterByStatus('pending')">
                 <h3 class="text-xs font-medium text-yellow-800 dark:text-yellow-200 uppercase">Pending</h3>
                 <p id="statPending" class="text-2xl font-bold text-yellow-900 dark:text-yellow-100">-</p>
             </div>
-            <div class="bg-green-100 dark:bg-green-900 shadow rounded-lg p-4">
+            <div class="bg-green-100 dark:bg-green-900 shadow rounded-lg p-4 cursor-pointer hover:ring-2 hover:ring-green-500 transition" onclick="filterByStatus('approved')">
                 <h3 class="text-xs font-medium text-green-800 dark:text-green-200 uppercase">Approved</h3>
                 <p id="statApproved" class="text-2xl font-bold text-green-900 dark:text-green-100">-</p>
             </div>
-            <div class="bg-red-100 dark:bg-red-900 shadow rounded-lg p-4">
+            <div class="bg-red-100 dark:bg-red-900 shadow rounded-lg p-4 cursor-pointer hover:ring-2 hover:ring-red-500 transition" onclick="filterByStatus('rejected')">
                 <h3 class="text-xs font-medium text-red-800 dark:text-red-200 uppercase">Rejected</h3>
                 <p id="statRejected" class="text-2xl font-bold text-red-900 dark:text-red-100">-</p>
             </div>
-            <div class="bg-orange-100 dark:bg-orange-900 shadow rounded-lg p-4">
+            <div class="bg-orange-100 dark:bg-orange-900 shadow rounded-lg p-4 cursor-pointer hover:ring-2 hover:ring-orange-500 transition" onclick="filterByStatus('flagged')">
                 <h3 class="text-xs font-medium text-orange-800 dark:text-orange-200 uppercase">Flagged</h3>
                 <p id="statFlagged" class="text-2xl font-bold text-orange-900 dark:text-orange-100">-</p>
             </div>
-            <div class="bg-purple-100 dark:bg-purple-900 shadow rounded-lg p-4">
+            <div class="bg-purple-100 dark:bg-purple-900 shadow rounded-lg p-4 cursor-pointer hover:ring-2 hover:ring-purple-500 transition" onclick="filterByStatus('spam')">
                 <h3 class="text-xs font-medium text-purple-800 dark:text-purple-200 uppercase">Suspected Spam</h3>
                 <p id="statSpam" class="text-2xl font-bold text-purple-900 dark:text-purple-100">-</p>
             </div>

@@ -789,4 +789,34 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         return text.replace(/[&<>"']/g, m => map[m]);
     }
+
+    // Make filterByStatus globally accessible for onclick handlers on stat cards
+    window.filterByStatus = function(status) {
+        // Map special filter types to actual status values and filters
+        if (status === 'spam') {
+            // Show pending reports (spam would be pending with high spam_score)
+            currentFilters.status = 'pending';
+            currentFilters.sort = 'spam_score';
+            currentFilters.flagged = 'all';
+        } else if (status === 'flagged') {
+            // Show all reports that have been flagged
+            currentFilters.status = 'all';
+            currentFilters.flagged = 'true';
+            currentFilters.sort = 'flags';
+        } else {
+            // Standard status filter (pending, approved, rejected)
+            currentFilters.status = status;
+            currentFilters.flagged = 'all';
+            currentFilters.sort = 'date';
+        }
+
+        currentPage = 1;
+        selectedReports.clear();
+        loadReports();
+
+        // Update the filter dropdowns to match
+        document.getElementById('filterStatus').value = currentFilters.status;
+        document.getElementById('filterFlagged').value = currentFilters.flagged;
+        document.getElementById('filterSort').value = currentFilters.sort;
+    };
 });
