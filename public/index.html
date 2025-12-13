@@ -2433,7 +2433,7 @@
             const modal = document.getElementById('reportModal');
 
             // Update modal content
-            document.getElementById('modalReportId').textContent = `#${report.report_id}`;
+            document.getElementById('modalReportId').textContent = `#${report.blip_id || 'unknown'}`;
             document.getElementById('modalReportDate').textContent = formatDate(report.report_timestamp);
             document.getElementById('modalDescription').textContent = report.description || 'No description provided.';
 
