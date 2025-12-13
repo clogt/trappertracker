@@ -426,9 +426,14 @@ function parseData() {
         line = line.trim();
         if (!line) continue;
 
-        // Check if this is an area header (ALL CAPS, no "blk")
-        if (line === line.toUpperCase() && !line.includes('BLK') && !line.includes('✓') && line.length > 5) {
-            currentArea = line;
+        // Check if this is an area header (ALL CAPS or ends with "area", no "blk")
+        const isAllCaps = line === line.toUpperCase();
+        const endsWithArea = line.toLowerCase().endsWith(' area') || line.toLowerCase().endsWith(' areas');
+        const hasBlockNumber = line.includes('BLK') || line.includes('blk');
+        const hasCheckmark = line.includes('✓');
+
+        if ((isAllCaps || endsWithArea) && !hasBlockNumber && !hasCheckmark && line.length > 5) {
+            currentArea = line.toUpperCase(); // Normalize to uppercase
             continue;
         }
 
