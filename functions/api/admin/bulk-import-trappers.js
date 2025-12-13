@@ -47,23 +47,18 @@ export async function onRequestPost({ request, env }) {
                 // Insert into trapper_blips table
                 await env.DB.prepare(`
                     INSERT INTO trapper_blips (
+                        reported_by_user_id,
                         latitude,
                         longitude,
+                        report_timestamp,
                         description,
-                        source_type,
-                        source_url,
-                        approval_status,
-                        submitted_by_user_id,
-                        created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                        is_active
+                    ) VALUES (?, ?, ?, datetime('now'), ?, 1)
                 `).bind(
+                    submitted_by_user_id || 'admin-import',
                     loc.latitude,
                     loc.longitude,
-                    loc.description,
-                    loc.source_type || 'manual',
-                    loc.source_url || null,
-                    loc.approval_status || 'pending',
-                    submitted_by_user_id || null
+                    loc.description
                 ).run();
 
                 results.success++;
