@@ -82,4 +82,4 @@ export const onRequestPost = csrfMiddleware(async (context) => {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-}
+});

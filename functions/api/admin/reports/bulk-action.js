@@ -8,7 +8,14 @@ import { csrfMiddleware } from '../csrf-middleware.js';
  * Perform bulk actions on multiple reports
  * Body: { action: 'approve'|'reject'|'delete', reportIds: [1,2,3], reason?: string, notes?: string }
  */
-export const onRequestPost = csrfMiddleware(async ({ request, env }) => {
+import { auditMiddleware } from '../audit-middleware.js';
+
+/**
+ * POST /api/admin/reports/bulk-action
+ * Perform bulk actions on multiple reports
+ * Body: { action: 'approve'|'reject'|'delete', reportIds: [1,2,3], reason?: string, notes?: string }
+ */
+export const onRequestPost = auditMiddleware('report_bulk_action')(csrfMiddleware(async ({ request, env }) => {
     const adminAuth = await verifyAdminAuth(request, env);
     if (!adminAuth.authenticated) {
         return new Response(JSON.stringify({ error: adminAuth.error }), {
@@ -134,31 +141,6 @@ export const onRequestPost = csrfMiddleware(async ({ request, env }) => {
                         break;
                 }
 
-                // Log each action
-                await env.DB.prepare(`
-                    INSERT INTO admin_audit_log (
-                        admin_user_id,
-                        action_type,
-                        target_type,
-                        target_id,
-                        action_details,
-                        ip_address,
-                        user_agent
-                    ) VALUES (?, ?, 'trapper_blip', ?, ?, ?, ?)
-                `).bind(
-                    adminAuth.userId,
-                    `report_bulk_${action}`,
-                    reportId,
-                    JSON.stringify({
-                        action,
-                        reason: reason || notes,
-                        description_preview: report.description?.substring(0, 50),
-                        previous_status: report.approval_status
-                    }),
-                    request.headers.get('CF-Connecting-IP') || 'unknown',
-                    request.headers.get('User-Agent') || 'unknown'
-                ).run();
-
                 results.success.push(reportId);
 
             } catch (error) {
@@ -169,30 +151,6 @@ export const onRequestPost = csrfMiddleware(async ({ request, env }) => {
                 });
             }
         }
-
-        // Log the bulk action summary
-        await env.DB.prepare(`
-            INSERT INTO admin_audit_log (
-                admin_user_id,
-                action_type,
-                target_type,
-                target_id,
-                action_details,
-                ip_address,
-                user_agent
-            ) VALUES (?, 'bulk_action_summary', 'trapper_blip', 'bulk', ?, ?, ?)
-        `).bind(
-            adminAuth.userId,
-            JSON.stringify({
-                action,
-                total: results.total,
-                successful: results.success.length,
-                failed: results.failed.length,
-                reason: reason || notes
-            }),
-            request.headers.get('CF-Connecting-IP') || 'unknown',
-            request.headers.get('User-Agent') || 'unknown'
-        ).run();
 
         return new Response(JSON.stringify({
             success: true,
@@ -213,4 +171,4 @@ export const onRequestPost = csrfMiddleware(async ({ request, env }) => {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-}
+}));

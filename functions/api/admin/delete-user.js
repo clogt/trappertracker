@@ -62,4 +62,4 @@ export const onRequestDelete = csrfMiddleware(async ({ request, env }) => {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-}
+});

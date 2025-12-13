@@ -3,11 +3,13 @@ import { verifyAdminAuth } from '../../auth-helper.js';
 
 import { csrfMiddleware } from '../../csrf-middleware.js';
 
+import { auditMiddleware } from '../../audit-middleware.js';
+
 /**
  * PUT /api/admin/reports/:id/reject
  * Reject a report and hide it from the public map
  */
-export const onRequestPut = csrfMiddleware(async ({ request, env, params }) => {
+export const onRequestPut = auditMiddleware('report_reject')(csrfMiddleware(async ({ request, env, params }) => {
     const adminAuth = await verifyAdminAuth(request, env);
     if (!adminAuth.authenticated) {
         return new Response(JSON.stringify({ error: adminAuth.error }), {
@@ -68,32 +70,6 @@ export const onRequestPut = csrfMiddleware(async ({ request, env, params }) => {
                 last_calculated = CURRENT_TIMESTAMP
         `).bind(existingReport.reported_by_user_id).run();
 
-        // Log the admin action
-        const auditStmt = env.DB.prepare(`
-            INSERT INTO admin_audit_log (
-                admin_user_id,
-                action_type,
-                target_type,
-                target_id,
-                action_details,
-                ip_address,
-                user_agent
-            ) VALUES (?, 'report_reject', 'trapper_blip', ?, ?, ?, ?)
-        `).bind(
-            adminAuth.userId,
-            reportId,
-            JSON.stringify({
-                reason,
-                previous_status: existingReport.approval_status,
-                description_preview: existingReport.description?.substring(0, 100),
-                user_id: existingReport.reported_by_user_id
-            }),
-            request.headers.get('CF-Connecting-IP') || 'unknown',
-            request.headers.get('User-Agent') || 'unknown'
-        );
-
-        await auditStmt.run();
-
         return new Response(JSON.stringify({
             success: true,
             message: 'Report rejected successfully',
@@ -114,4 +90,4 @@ export const onRequestPut = csrfMiddleware(async ({ request, env, params }) => {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-}
+}));

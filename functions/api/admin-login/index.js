@@ -8,8 +8,6 @@ const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes in milliseconds
 // In-memory store for failed login attempts (in production, use KV store)
 const failedAttempts = new Map();
 
-import { rateLimitMiddleware } from '../admin/rate-limit-middleware.js';
-
 function getJwtSecret(env) {
     if (!env.JWT_SECRET) {
         throw new Error("JWT_SECRET environment variable not set");
@@ -17,9 +15,27 @@ function getJwtSecret(env) {
     return new TextEncoder().encode(env.JWT_SECRET);
 }
 
-export const onRequestPost = rateLimitMiddleware(async ({ request, env }) => {
+export async function onRequestPost({ request, env }) {
     try {
         const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+
+        // Check if IP is locked out
+        const attempts = failedAttempts.get(clientIP);
+        if (attempts && attempts.count >= MAX_LOGIN_ATTEMPTS) {
+            const lockoutExpiry = attempts.timestamp + LOCKOUT_DURATION;
+            if (Date.now() < lockoutExpiry) {
+                const remainingTime = Math.ceil((lockoutExpiry - Date.now()) / 60000);
+                return new Response(JSON.stringify({
+                    error: `Too many failed attempts. Please try again in ${remainingTime} minutes.`
+                }), {
+                    status: 429,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } else {
+                // Lockout expired, reset attempts
+                failedAttempts.delete(clientIP);
+            }
+        }
 
         const { username, password } = await request.json();
 
@@ -56,6 +72,9 @@ export const onRequestPost = rateLimitMiddleware(async ({ request, env }) => {
         const passwordMatch = await bcrypt.compare(password, adminPasswordHash);
 
         if (usernameMatch && passwordMatch) {
+            // Clear failed attempts on successful login
+            failedAttempts.delete(clientIP);
+
             // Create JWT token
             const JWT_SECRET = getJwtSecret(env);
             const token = await new jose.SignJWT({
@@ -88,11 +107,18 @@ export const onRequestPost = rateLimitMiddleware(async ({ request, env }) => {
                 }
             });
         } else {
+            // Record failed login attempt
+            const currentAttempts = failedAttempts.get(clientIP) || { count: 0, timestamp: Date.now() };
+            currentAttempts.count += 1;
+            currentAttempts.timestamp = Date.now();
+            failedAttempts.set(clientIP, currentAttempts);
+
             // Log failed login attempt
-            console.warn(`Failed admin login attempt from IP: ${clientIP}`);
+            console.warn(`Failed admin login attempt from IP: ${clientIP} (Attempt ${currentAttempts.count}/${MAX_LOGIN_ATTEMPTS})`);
 
             return new Response(JSON.stringify({
-                error: 'Invalid credentials'
+                error: 'Invalid credentials',
+                remainingAttempts: MAX_LOGIN_ATTEMPTS - currentAttempts.count
             }), {
                 status: 401,
                 headers: { 'Content-Type': 'application/json' }
@@ -107,4 +133,4 @@ export const onRequestPost = rateLimitMiddleware(async ({ request, env }) => {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-});
+}

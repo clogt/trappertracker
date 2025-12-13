@@ -6,13 +6,15 @@ import { csrfMiddleware } from './csrf-middleware.js';
 
 import { rateLimitMiddleware } from './rate-limit-middleware.js';
 
+import { auditMiddleware } from './audit-middleware.js';
+
 /**
  * POST /api/admin/change-password
  * Changes admin password after verifying current password
  * Requires: currentPassword, newPassword in request body
  * Returns: Success message (Note: Admin must manually update ADMIN_PASSWORD_HASH env var)
  */
-export const onRequestPost = rateLimitMiddleware(csrfMiddleware(async ({ request, env }) => {
+export const onRequestPost = auditMiddleware('change_password')(rateLimitMiddleware(csrfMiddleware(async ({ request, env }) => {
     try {
         // Verify admin authentication
         const adminPayload = await verifyAdminToken(request, env);
@@ -70,12 +72,6 @@ export const onRequestPost = rateLimitMiddleware(csrfMiddleware(async ({ request
         const isCurrentPasswordValid = await bcrypt.compare(currentPassword, currentPasswordHash);
 
         if (!isCurrentPasswordValid) {
-            // Log failed password change attempt
-            const clientIP = request.headers.get('CF-Connecting-IP') ||
-                           request.headers.get('X-Forwarded-For') ||
-                           'unknown';
-            console.warn(`Failed password change attempt for admin from IP: ${clientIP} at ${new Date().toISOString()}`);
-
             return new Response(JSON.stringify({
                 error: 'Current password is incorrect'
             }), {
@@ -86,12 +82,6 @@ export const onRequestPost = rateLimitMiddleware(csrfMiddleware(async ({ request
 
         // Generate new password hash using bcrypt with cost factor 10
         const newPasswordHash = await bcrypt.hash(newPassword, 10);
-
-        // Log successful password change
-        const clientIP = request.headers.get('CF-Connecting-IP') ||
-                       request.headers.get('X-Forwarded-For') ||
-                       'unknown';
-        console.log(`Admin password changed successfully from IP: ${clientIP} at ${new Date().toISOString()}`);
 
         // Return the new hash for manual environment variable update
         // Security Note: In production, this should ideally update the environment variable automatically
@@ -116,4 +106,4 @@ export const onRequestPost = rateLimitMiddleware(csrfMiddleware(async ({ request
             headers: { 'Content-Type': 'application/json' }
         });
     }
-}
+})));
