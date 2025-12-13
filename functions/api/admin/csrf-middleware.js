@@ -1,5 +1,3 @@
-import { nanoid } from 'nanoid';
-
 // functions/api/admin/csrf-middleware.js
 
 import { nanoid } from 'nanoid';
@@ -50,13 +48,14 @@ export async function validateCsrfToken(request, env) {
 }
 
 export function csrfMiddleware(handler) {
-  return async (request, env) => {
+  return async (context) => {
+    const { request, env } = context;
     if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
       const isValid = await validateCsrfToken(request, env);
       if (!isValid) {
         return new Response('Invalid CSRF token', { status: 403 });
       }
     }
-    return handler(request, env);
+    return handler(context);
   };
 }

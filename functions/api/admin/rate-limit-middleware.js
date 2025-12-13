@@ -6,7 +6,8 @@ const MAX_REQUESTS_PER_WINDOW = 10;
 const ipRequestCounts = new Map();
 
 export function rateLimitMiddleware(handler) {
-  return async (request, env) => {
+  return async (context) => {
+    const { request, env } = context;
     const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
 
     if (!ipRequestCounts.has(ip)) {
@@ -29,6 +30,6 @@ export function rateLimitMiddleware(handler) {
       return new Response('Too many requests', { status: 429 });
     }
 
-    return handler(request, env);
+    return handler(context);
   };
 }
