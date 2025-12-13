@@ -1545,6 +1545,7 @@
         <div class="header-title">TrapperTracker</div>
         <div class="header-right">
             <span class="user-indicator" id="userIndicator"></span>
+            <a href="/login.html" class="support-link" id="loginLink">Login</a>
             <a href="/admin-login.html" class="support-link">Admin Login</a>
             <a href="/donate.html" class="support-link">Support</a>
         </div>
@@ -1908,16 +1909,26 @@
                     credentials: 'include'
                 });
 
+                const loginLink = document.getElementById('loginLink');
+
                 if (response.ok) {
                     const data = await response.json();
                     const userIndicator = document.getElementById('userIndicator');
                     if (data.email) {
                         userIndicator.textContent = `👤 ${data.email}`;
                         userIndicator.classList.add('visible');
+                        // Hide login link when user is logged in
+                        if (loginLink) loginLink.style.display = 'none';
                     }
+                } else {
+                    // Show login link when user is not logged in
+                    if (loginLink) loginLink.style.display = '';
                 }
             } catch (error) {
                 console.log('User not logged in');
+                // Show login link on error
+                const loginLink = document.getElementById('loginLink');
+                if (loginLink) loginLink.style.display = '';
             }
         }
 
