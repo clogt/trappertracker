@@ -31,6 +31,16 @@ export async function onRequestPost({ request, env }) {
             errors: []
         };
 
+        // First, ensure a system user exists for imports
+        try {
+            await env.DB.prepare(`
+                INSERT OR IGNORE INTO users (user_id, email, password_hash, is_verified, role)
+                VALUES ('system-import', 'system@trappertracker.com', 'SYSTEM', 1, 'admin')
+            `).run();
+        } catch (err) {
+            console.error('Failed to create system user:', err);
+        }
+
         // Insert each location
         for (const loc of locations) {
             try {
@@ -55,7 +65,7 @@ export async function onRequestPost({ request, env }) {
                         is_active
                     ) VALUES (?, ?, ?, datetime('now'), ?, 1)
                 `).bind(
-                    submitted_by_user_id || 'admin-import',
+                    'system-import',
                     loc.latitude,
                     loc.longitude,
                     loc.description
