@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Import - 364 Trapper Locations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold mb-4">Import 364 Trapper Locations</h1>
+        <p class="mb-6">This will import all addresses from Reese R. to the database as pending reports.</p>
+
+        <div id="status" class="mb-6 p-4 rounded hidden"></div>
+
+        <button id="importBtn" onclick="doImport()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg">
+            Click to Import 364 Locations
+        </button>
+
+        <div id="progress" class="mt-6 hidden">
+            <div class="text-xl font-semibold">Importing...</div>
+            <div class="mt-2 text-gray-400">This may take a minute...</div>
+        </div>
+
+        <div id="result" class="mt-6 hidden">
+            <h2 class="text-2xl font-bold mb-2">Import Complete!</h2>
+            <div id="stats" class="text-lg"></div>
+            <div class="mt-4">
+                <a href="/admin-moderation.html" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-block">
+                    Go to Moderation Queue →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function doImport() {
+            const btn = document.getElementById('importBtn');
+            const status = document.getElementById('status');
+            const progress = document.getElementById('progress');
+            const result = document.getElementById('result');
+
+            btn.disabled = true;
+            btn.textContent = 'Importing...';
+            progress.classList.remove('hidden');
+
+            try {
+                // Fetch the import-ready data
+                const dataResponse = await fetch('/assets/data/trapper-locations-import-ready.json');
+                if (!dataResponse.ok) {
+                    throw new Error('Failed to load data file');
+                }
+                const locations = await dataResponse.json();
+
+                // Import via API
+                const importResponse = await fetch('/api/admin/bulk-import-trappers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // Includes admin_token cookie
+                    body: JSON.stringify({
+                        locations: locations,
+                        submitted_by_user_id: null
+                    })
+                });
+
+                const importResult = await importResponse.json();
+
+                progress.classList.add('hidden');
+
+                if (importResponse.ok) {
+                    result.classList.remove('hidden');
+                    document.getElementById('stats').innerHTML = `
+                        <div class="text-green-400">✓ Success: ${importResult.results.success} locations</div>
+                        <div class="text-red-400">✗ Failed: ${importResult.results.failed} locations</div>
+                    `;
+                    status.className = 'mb-6 p-4 rounded bg-green-900 text-green-100';
+                    status.textContent = '✓ Import successful!';
+                    status.classList.remove('hidden');
+                } else {
+                    throw new Error(importResult.error || 'Import failed');
+                }
+            } catch (err) {
+                progress.classList.add('hidden');
+                status.className = 'mb-6 p-4 rounded bg-red-900 text-red-100';
+                status.textContent = '✗ Error: ' + err.message;
+                status.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Retry Import';
+            }
+        }
+    </script>
+</body>
+</html>
