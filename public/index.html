@@ -1536,6 +1536,102 @@
                 font-size: 13px;
             }
         }
+
+        /* Danger Zone Cluster Styling */
+        .danger-zone-cluster {
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.6) 70%, rgba(153, 27, 27, 0.4) 100%);
+            border: 3px solid #991b1b;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), 0 0 40px rgba(239, 68, 68, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-danger 2s ease-in-out infinite;
+        }
+
+        .danger-zone-cluster .cluster-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .danger-zone-cluster .cluster-count {
+            font-size: 20px;
+            font-weight: 800;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .danger-zone-cluster .cluster-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1;
+        }
+
+        /* Size variations */
+        .danger-zone-cluster-small .cluster-count {
+            font-size: 18px;
+        }
+
+        .danger-zone-cluster-small .cluster-label {
+            font-size: 7px;
+        }
+
+        .danger-zone-cluster-medium .cluster-count {
+            font-size: 24px;
+        }
+
+        .danger-zone-cluster-medium .cluster-label {
+            font-size: 9px;
+        }
+
+        .danger-zone-cluster-large {
+            border-width: 4px;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.7), 0 0 60px rgba(239, 68, 68, 0.4);
+        }
+
+        .danger-zone-cluster-large .cluster-count {
+            font-size: 32px;
+            margin-bottom: 4px;
+        }
+
+        .danger-zone-cluster-large .cluster-label {
+            font-size: 10px;
+        }
+
+        /* Pulse animation for danger zones */
+        @keyframes pulse-danger {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), 0 0 40px rgba(239, 68, 68, 0.3);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 30px rgba(239, 68, 68, 0.8), 0 0 60px rgba(239, 68, 68, 0.5);
+            }
+        }
+
+        /* Override default cluster coverage polygon styling */
+        .leaflet-cluster-anim .leaflet-marker-icon {
+            transition: all 0.3s ease;
+        }
+
+        /* Coverage polygon for danger zones */
+        path.leaflet-interactive[stroke="#03f"] {
+            stroke: #dc2626 !important;
+            fill: #ef4444 !important;
+            fill-opacity: 0.2 !important;
+        }
     </style>
 </head>
 <body>
@@ -1948,22 +2044,31 @@
                 position: 'bottomright'
             }).addTo(map);
 
-            // Initialize marker cluster group
+            // Initialize marker cluster group with danger zone styling
             markerClusterGroup = L.markerClusterGroup({
-                maxClusterRadius: 60,
+                maxClusterRadius: 120, // Larger radius to group nearby trapper zones
                 spiderfyOnMaxZoom: true,
-                showCoverageOnHover: false,
+                showCoverageOnHover: true, // Show danger zone coverage area on hover
                 zoomToBoundsOnClick: true,
+                spiderfyDistanceMultiplier: 1.5,
                 iconCreateFunction: function(cluster) {
                     const count = cluster.getChildCount();
                     let size = 'small';
-                    if (count >= 20) size = 'large';
-                    else if (count >= 10) size = 'medium';
+                    let iconSize = 50;
+
+                    // Create larger clusters for dense trapper zones
+                    if (count >= 20) {
+                        size = 'large';
+                        iconSize = 80;
+                    } else if (count >= 10) {
+                        size = 'medium';
+                        iconSize = 65;
+                    }
 
                     return L.divIcon({
-                        html: `<div><span>${count}</span></div>`,
-                        className: `marker-cluster marker-cluster-${size}`,
-                        iconSize: L.point(40, 40)
+                        html: `<div class="cluster-inner"><span class="cluster-count">${count}</span><span class="cluster-label">DANGER ZONES</span></div>`,
+                        className: `danger-zone-cluster danger-zone-cluster-${size}`,
+                        iconSize: L.point(iconSize, iconSize)
                     });
                 }
             });
